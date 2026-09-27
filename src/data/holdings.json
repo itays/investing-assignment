@@ -1,0 +1,32 @@
+[
+  {
+    "person_id": "person-ava",
+    "symbol": "AAPL",
+    "quantity": 25,
+    "price_paid": 291.4
+  },
+  {
+    "person_id": "person-ava",
+    "symbol": "EUR/USD",
+    "quantity": 10000,
+    "price_paid": 1.0925
+  },
+  {
+    "person_id": "person-ava",
+    "symbol": "SHIB/USD",
+    "quantity": 12500000,
+    "price_paid": 6.12e-6
+  },
+  {
+    "person_id": "person-liam",
+    "symbol": "US500",
+    "quantity": 3,
+    "price_paid": 7412.08
+  },
+  {
+    "person_id": "person-liam",
+    "symbol": "BTC/USD",
+    "quantity": 0.75,
+    "price_paid": 68120.0
+  }
+]

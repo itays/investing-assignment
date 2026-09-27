@@ -1,0 +1,794 @@
+[
+ {
+  "symbol": "AAPL",
+  "name": "Apple Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 309.35
+ },
+ {
+  "symbol": "AEP",
+  "name": "American Electric Power Company Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 120.94
+ },
+ {
+  "symbol": "ALB",
+  "name": "Albemarle Corp",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 143.25
+ },
+ {
+  "symbol": "AMD",
+  "name": "Advanced Micro Devices Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 473.25
+ },
+ {
+  "symbol": "AMZN",
+  "name": "Amazon.com Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 258.63
+ },
+ {
+  "symbol": "AUD/USD",
+  "name": "Australian Dollar US Dollar",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 0.7171
+ },
+ {
+  "symbol": "AVGO",
+  "name": "Broadcom Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 368.45
+ },
+ {
+  "symbol": "BABA",
+  "name": "Alibaba Group Holdings Ltd ADR",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 119.34
+ },
+ {
+  "symbol": "BE",
+  "name": "Bloom Energy Corp",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 201.45
+ },
+ {
+  "symbol": "BNB/USD",
+  "name": "BNB",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 683.7
+ },
+ {
+  "symbol": "BTC/USD",
+  "name": "Bitcoin",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 1,
+  "last_price": 75957.5
+ },
+ {
+  "symbol": "CNP",
+  "name": "CenterPoint Energy Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 38.77
+ },
+ {
+  "symbol": "COIN",
+  "name": "Coinbase Global Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 186.49
+ },
+ {
+  "symbol": "CRCL",
+  "name": "Circle Internet Group Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 87.98
+ },
+ {
+  "symbol": "CRWV",
+  "name": "CoreWeave Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 87.85
+ },
+ {
+  "symbol": "DJI",
+  "name": "Dow Jones Industrial Average",
+  "asset_class": "index",
+  "exchange": "NYSE",
+  "currency": null,
+  "decimals": 2,
+  "last_price": 53277.01
+ },
+ {
+  "symbol": "DOGE/USD",
+  "name": "Dogecoin",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 6,
+  "last_price": 0.090209
+ },
+ {
+  "symbol": "DXU6",
+  "name": "US Dollar Index Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 98.77
+ },
+ {
+  "symbol": "EIX",
+  "name": "Edison International",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 71.59
+ },
+ {
+  "symbol": "EL",
+  "name": "Estee Lauder Companies Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 101.94
+ },
+ {
+  "symbol": "ETH/USD",
+  "name": "Ethereum",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 2387.76
+ },
+ {
+  "symbol": "EUR/GBP",
+  "name": "Euro British Pound",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "GBP",
+  "decimals": 4,
+  "last_price": 0.8559
+ },
+ {
+  "symbol": "EUR/JPY",
+  "name": "Euro Japanese Yen",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "JPY",
+  "decimals": 2,
+  "last_price": 185.64
+ },
+ {
+  "symbol": "EUR/USD",
+  "name": "Euro US Dollar",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 1.1677
+ },
+ {
+  "symbol": "FCX",
+  "name": "Freeport-McMoran Copper & Gold Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 76.66
+ },
+ {
+  "symbol": "FGBLU6",
+  "name": "Euro Bund Futures",
+  "asset_class": "commodity",
+  "exchange": "Eurex",
+  "currency": "EUR",
+  "decimals": 2,
+  "last_price": 123.78
+ },
+ {
+  "symbol": "GBP/JPY",
+  "name": "British Pound Japanese Yen",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "JPY",
+  "decimals": 2,
+  "last_price": 216.91
+ },
+ {
+  "symbol": "GBP/USD",
+  "name": "British Pound US Dollar",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 1.3645
+ },
+ {
+  "symbol": "GCZ6",
+  "name": "Gold Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 4661.6
+ },
+ {
+  "symbol": "GOOG",
+  "name": "Alphabet Inc Class C",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 341.75
+ },
+ {
+  "symbol": "GOOGL",
+  "name": "Alphabet Inc Class A",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 344.82
+ },
+ {
+  "symbol": "HCA",
+  "name": "HCA Holdings Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 429.19
+ },
+ {
+  "symbol": "HGU6",
+  "name": "Copper Futures",
+  "asset_class": "commodity",
+  "exchange": "COMEX",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 6.58
+ },
+ {
+  "symbol": "INTC",
+  "name": "Intel Corporation",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 90.07
+ },
+ {
+  "symbol": "IREN",
+  "name": "IREN Ltd",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 41.88
+ },
+ {
+  "symbol": "IWM",
+  "name": "iShares Russell 2000 ETF",
+  "asset_class": "etf",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 299.96
+ },
+ {
+  "symbol": "IXIC",
+  "name": "NASDAQ Composite",
+  "asset_class": "index",
+  "exchange": "NASDAQ",
+  "currency": null,
+  "decimals": 2,
+  "last_price": 26180.46
+ },
+ {
+  "symbol": "JNUG",
+  "name": "Direxion Daily Junior Gold Miners Index Bull 2X Shares",
+  "asset_class": "etf",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 208.23
+ },
+ {
+  "symbol": "KO",
+  "name": "Coca-Cola Co",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 91.1
+ },
+ {
+  "symbol": "LCOV6",
+  "name": "Brent Oil Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 93.93
+ },
+ {
+  "symbol": "META",
+  "name": "Meta Platforms Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 549.9
+ },
+ {
+  "symbol": "MRNA",
+  "name": "Moderna Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 145.13
+ },
+ {
+  "symbol": "MRVL",
+  "name": "Marvell Technology Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 237.04
+ },
+ {
+  "symbol": "MSFT",
+  "name": "Microsoft Corporation",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 483.24
+ },
+ {
+  "symbol": "MSTR",
+  "name": "Strategy Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 119.25
+ },
+ {
+  "symbol": "MU",
+  "name": "Micron Technology Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 966.78
+ },
+ {
+  "symbol": "NFLX",
+  "name": "Netflix Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 79.59
+ },
+ {
+  "symbol": "NGU6",
+  "name": "Natural Gas Futures",
+  "asset_class": "commodity",
+  "exchange": "NYMEX",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 2.755
+ },
+ {
+  "symbol": "NKE",
+  "name": "Nike Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 40.76
+ },
+ {
+  "symbol": "NVDA",
+  "name": "NVIDIA Corporation",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 214.72
+ },
+ {
+  "symbol": "NZD/USD",
+  "name": "New Zealand Dollar US Dollar",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 0.5981
+ },
+ {
+  "symbol": "OIL",
+  "name": "Crude Oil WTI Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 86.64
+ },
+ {
+  "symbol": "ORCL",
+  "name": "Oracle Corporation",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 146.47
+ },
+ {
+  "symbol": "PLTR",
+  "name": "Palantir Technologies\u00a0Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 179.94
+ },
+ {
+  "symbol": "PWR",
+  "name": "Quanta Services Inc",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 639.34
+ },
+ {
+  "symbol": "QQQ",
+  "name": "Invesco QQQ Trust",
+  "asset_class": "etf",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 713.44
+ },
+ {
+  "symbol": "SHIB/USD",
+  "name": "Investing.com Shiba Inu Index",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 8,
+  "last_price": 5.3e-06
+ },
+ {
+  "symbol": "SIU6",
+  "name": "Silver Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 69.01
+ },
+ {
+  "symbol": "SLV",
+  "name": "iShares Silver Trust",
+  "asset_class": "etf",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 62.72
+ },
+ {
+  "symbol": "SMCI",
+  "name": "Super Micro Computer Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 37.24
+ },
+ {
+  "symbol": "SNDK",
+  "name": "SanDisk Corporation",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 1596.08
+ },
+ {
+  "symbol": "SOL/USD",
+  "name": "Solana",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 92.432
+ },
+ {
+  "symbol": "SPCX",
+  "name": "Space Exploration Technologies Corp",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 136.97
+ },
+ {
+  "symbol": "SPY",
+  "name": "SPDR\u00ae S&P 500\u00ae ETF Trust",
+  "asset_class": "etf",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 765.72
+ },
+ {
+  "symbol": "SRE",
+  "name": "Sempra Energy",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 82.89
+ },
+ {
+  "symbol": "TQQQ",
+  "name": "ProShares UltraPro QQQ",
+  "asset_class": "etf",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 71.17
+ },
+ {
+  "symbol": "TSLA",
+  "name": "Tesla Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 362.86
+ },
+ {
+  "symbol": "TSM",
+  "name": "Taiwan Semiconductor Manufacturing",
+  "asset_class": "share",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 418.95
+ },
+ {
+  "symbol": "TYU26",
+  "name": "US 10 Year T-Note Futures",
+  "asset_class": "commodity",
+  "exchange": "CME",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 108.27
+ },
+ {
+  "symbol": "US10YT=X",
+  "name": "United States 10-Year",
+  "asset_class": "bond",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 3,
+  "last_price": 4.738
+ },
+ {
+  "symbol": "US2US10=RR",
+  "name": "10-2 Year Treasury Yield Spread",
+  "asset_class": "bond",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 31.32
+ },
+ {
+  "symbol": "US30",
+  "name": "US 30 Cash",
+  "asset_class": "index",
+  "exchange": "US Indexes",
+  "currency": "USD",
+  "decimals": 1,
+  "last_price": 53261.4
+ },
+ {
+  "symbol": "US30YT=X",
+  "name": "United States 30-Year",
+  "asset_class": "bond",
+  "exchange": "NYSE",
+  "currency": null,
+  "decimals": 3,
+  "last_price": 5.276
+ },
+ {
+  "symbol": "US3MT=X",
+  "name": "United States 3-Month",
+  "asset_class": "bond",
+  "exchange": "NYSE",
+  "currency": null,
+  "decimals": 3,
+  "last_price": 3.809
+ },
+ {
+  "symbol": "US500",
+  "name": "S&P 500",
+  "asset_class": "index",
+  "exchange": "NYSE",
+  "currency": null,
+  "decimals": 2,
+  "last_price": 7674.37
+ },
+ {
+  "symbol": "US5YT=X",
+  "name": "United States 5-Year",
+  "asset_class": "bond",
+  "exchange": "NYSE",
+  "currency": null,
+  "decimals": 3,
+  "last_price": 4.424
+ },
+ {
+  "symbol": "USD/CAD",
+  "name": "US Dollar Canadian Dollar",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "CAD",
+  "decimals": 4,
+  "last_price": 1.3767
+ },
+ {
+  "symbol": "USD/CHF",
+  "name": "US Dollar Swiss Franc",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "CHF",
+  "decimals": 4,
+  "last_price": 0.8014
+ },
+ {
+  "symbol": "USD/INR",
+  "name": "US Dollar Indian Rupee",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "INR",
+  "decimals": 3,
+  "last_price": 95.739
+ },
+ {
+  "symbol": "USD/JPY",
+  "name": "US Dollar Japanese Yen",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "JPY",
+  "decimals": 2,
+  "last_price": 158.98
+ },
+ {
+  "symbol": "USD/MXN",
+  "name": "US Dollar Mexican Peso",
+  "asset_class": "currency",
+  "exchange": "Real-time Currencies",
+  "currency": "MXN",
+  "decimals": 4,
+  "last_price": 16.9209
+ },
+ {
+  "symbol": "UVXY",
+  "name": "ProShares Ultra VIX Short-Term Futures ETF",
+  "asset_class": "etf",
+  "exchange": "NYSE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 19.4
+ },
+ {
+  "symbol": "VIX",
+  "name": "CBOE Volatility Index",
+  "asset_class": "index",
+  "exchange": "CBOE",
+  "currency": null,
+  "decimals": 2,
+  "last_price": 15.13
+ },
+ {
+  "symbol": "WMT",
+  "name": "Walmart Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 103.7
+ },
+ {
+  "symbol": "XEL",
+  "name": "Xcel Energy Inc",
+  "asset_class": "share",
+  "exchange": "NASDAQ",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 76.3
+ },
+ {
+  "symbol": "XRP/USD",
+  "name": "XRP",
+  "asset_class": "index",
+  "exchange": "Investing.com",
+  "currency": "USD",
+  "decimals": 4,
+  "last_price": 1.4596
+ },
+ {
+  "symbol": "ZEC/USD",
+  "name": "Zcash US Dollar",
+  "asset_class": "currency",
+  "exchange": "Binance",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 801.84
+ },
+ {
+  "symbol": "ZSX6",
+  "name": "US Soybeans Futures",
+  "asset_class": "commodity",
+  "exchange": "ICE",
+  "currency": "USD",
+  "decimals": 2,
+  "last_price": 1240.25
+ }
+]
