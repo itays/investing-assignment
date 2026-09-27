@@ -1,0 +1,260 @@
+# Step 2 — Writing a rule: create, edit, pause, resume and delete Alerts
+
+> Spec for step 2 of [`TASK.md`](../../TASK.md), published as [issue #1](https://github.com/itays/investing-assignment/issues/1). The design it builds is [`docs/design.md`](../design.md) — **§11 is the scope**, §3 the domain rules, §5 the rule contract, §8 the public projection. This spec does not restate the design; it adds the step-2 decisions that the design leaves open. Terms are from [`CONTEXT.md`](../../CONTEXT.md).
+
+## Problem Statement
+
+A Person who follows Instruments on Market Desk has no way to say "tell me when this happens". There are no Alerts at all: nowhere to set one up, change it, pause it or delete it. A Person can't use what they hold either: "tell me when AAPL drops below what I paid" is the rule people want most, and it depends on private data only we have.
+
+The Checking team is also blocked. They need a stable rule contract from us: the rule message, `rule_revision`, `version`, and the matching semantics. Every part downstream (Ingest, status, Shared Links) needs Alerts to act on, so nothing else can start until Alerts exist.
+
+## Solution
+
+A signed-in Owner can create an Alert on any Instrument, from the Alerts page or straight from the Instrument's page. They choose one Rule:
+
+- **Price**: the Instrument goes above or below a price they type.
+- **Price, using what they paid (a Private Rule)**: offered only for an Instrument they hold. The form shows their own Price Paid.
+- **Percentage**: the Instrument rises or falls by N% from Today's Open.
+
+They can also give the Alert a private Alert Title.
+
+They can then edit the Alert, pause it, resume it or delete it. Their Alerts are kept in a database, so after a reload, a restart or a new session they find the same Alerts. They can search, filter and sort among hundreds of Alerts.
+
+The page is honest about what it knows. No Checking System is connected yet, so every Alert shows **Not yet checked**. It never shows "no matches", and nothing says or implies that the Owner was notified.
+
+Behind the pages, each change the Checking System needs to hear about writes the full-state rule message of design §5 to an outbox, in the same transaction as the change. Nothing publishes the outbox yet, but the contract exists and is tested. The public projection that Shared Links will use later is also built and tested, so it cannot leak the Alert Title or anything that comes from a Holding.
+
+Another Person can't see or change someone else's Alert. The server checks this on every call, and for anyone but the Owner the Alert looks exactly like one that doesn't exist.
+
+## User Stories
+
+### Getting to Alerts
+
+1. As a signed-in Person, I want an "Alerts" entry in the site header, so that I can reach my Alerts from any page.
+2. As a signed-in Person, I want an Alerts page listing every Alert I own, so that I can see everything I've set up in one place.
+3. As a signed-out Person, I want the Alerts page to send me to sign in, so that I'm not shown an empty or misleading list.
+4. As a signed-in Person with no Alerts yet, I want an empty state that explains what an Alert is and offers "New alert", so that I know how to start.
+5. As an Owner looking at an Instrument's page, I want a "Create alert" action with the Symbol already filled in, so that I can set up an Alert on what I'm reading about without searching for it again.
+6. As an Owner on the Alerts page, I want a "New alert" action where I pick the Instrument, so that I can create an Alert on any of the 88 Instruments.
+
+### Creating a Rule
+
+7. As an Owner, I want to choose between a Price Rule and a Percentage Rule, so that I can say what "something happening" means to me.
+8. As an Owner, I want a Price Rule to say "goes above" or "goes below" a price I type, so that I'm told when a level I care about is crossed.
+9. As an Owner who holds the Instrument, I want to set the threshold to "What I paid (291.40)" instead of typing a price, so that I'm told when the Instrument crosses my own Price Paid.
+10. As an Owner, I want to see my own Price Paid in the form, formatted to the Instrument's precision, so that I know which number the Rule will use.
+11. As an Owner who doesn't hold the Instrument, I don't want to be offered "What I paid", so that I'm never offered a Rule that can't work.
+12. As an Owner, I want a Percentage Rule to say "rises by N%" or "falls by N%" from today's open, so that I'm told about a big move on the day.
+13. As an Owner, I want to see the Instrument's last catalogue price next to the threshold, so that I have context while I type.
+14. As an Owner, I don't want the form to predict "this will match immediately", so that I'm not given a claim the web app can't back up.
+15. As an Owner, I want an optional Alert Title of up to 80 characters, so that I can find this Alert among hundreds.
+16. As an Owner, I want to keep several Alerts on the same Instrument, so that I can watch more than one level on it.
+17. As an Owner, I want to see my Rule in plain words while I build it (for example "AAPL goes below 300.00", "AAPL goes below what you paid (291.40)" or "BTC/USD falls 5% from today's open"), so that I can check it says what I mean.
+
+### Validation
+
+18. As an Owner, I want the form to show a validation error next to the field before I submit, so that I can fix mistakes quickly.
+19. As an Owner, I want a price threshold to be rejected unless it is greater than zero, so that I can't set up a Rule that means nothing.
+20. As an Owner, I want a price threshold to be rejected if it has more decimals than the Instrument is quoted to (8 for SHIB/USD, 2 for AAPL), so that the threshold is a price the Instrument can actually show.
+21. As an Owner, I want "falls by N%" to accept only values above 0 and below 100, so that I can't ask for a fall the price can never reach.
+22. As an Owner, I want "rises by N%" to accept values above 0 and up to 1000, so that big moves are allowed but meaningless ones aren't.
+23. As an Owner, I want surrounding spaces trimmed from my Alert Title, and an empty title treated as no title, so that a blank title doesn't clutter my list.
+24. As an Owner, I want the server to enforce the same rules as the form, so that an Alert saved by any route is always valid.
+25. As an Owner, I want a Private Rule on an Instrument I don't hold to be rejected by the server, so that no Alert can claim a Price Paid that doesn't exist.
+
+### Saving reliably
+
+26. As an Owner whose save failed partway (network error, server restart), I want to retry safely, so that I never end up with two copies of the same Alert.
+27. As an Owner who double-clicks "Create alert", I want exactly one Alert created, so that my list isn't polluted with duplicates.
+28. As an Owner who comes back after a reload, a server restart or a new session, I want to find exactly the Alerts I left, so that I can trust the app to remember them.
+
+### Seeing my Alerts
+
+29. As an Owner, I want each Alert in the list to show its Symbol, its Rule Description, its Alert Title if it has one, and whether it is Active or Paused, so that I can read the list at a glance.
+30. As an Owner, I want every Alert to show "Not yet checked", so that I know nothing has been evaluated yet.
+31. As an Owner, I don't want to see "No matches" or "Last matched: never", so that I'm not told something nobody knows yet.
+32. As an Owner, I don't want anything on the page to say or imply I was notified, so that I'm never misled about notifications.
+33. As an Owner with hundreds of Alerts, I want to search by Alert Title, Symbol or Rule Description, so that I can find one Alert quickly.
+34. As an Owner with hundreds of Alerts, I want to filter by Active/Paused, Rule Kind and Symbol, so that I can narrow the list down.
+35. As an Owner with hundreds of Alerts, I want to sort by newest or by Symbol, so that I can scan the list in a useful order.
+36. As an Owner with hundreds of Alerts, I want the list to load in one request and search, filter and sort without further waiting, so that managing many Alerts feels instant.
+
+### Editing
+
+37. As an Owner, I want to open an Alert and change its Rule (kind, direction, threshold) and its Alert Title, so that I can adjust what I'm watching for.
+38. As an Owner, I want the Instrument shown read-only when I edit, so that I understand an Alert always stays on one Instrument.
+39. As an Owner, I want a change to the Rule to start its Match history over, so that Matches of the old Rule are never shown under the new one.
+40. As an Owner, I want a change to only the Alert Title to keep the Match history, so that renaming doesn't lose anything.
+41. As an Owner, I want saving an unchanged form, or a number written differently (`5` instead of `5.00`), to change nothing, so that saving by habit doesn't restart my history.
+42. As an Owner, I want switching between "What I paid" and a typed price to count as a new Rule even when the number is the same, so that the Rule's meaning is tracked honestly.
+43. As an Owner editing in two tabs, I want a save from the older tab to be rejected with "This alert changed since you opened it" and the latest version shown, so that I never overwrite a change without seeing it.
+
+### Pausing, resuming, deleting
+
+44. As an Owner, I want to pause an Alert from the list or from its page, so that it stops being checked without losing its setup or history.
+45. As an Owner, I want to resume a Paused Alert, so that it's checked again with the same Rule and history.
+46. As an Owner resuming an Alert with a Private Rule, I want my Price Paid looked up again, so that the Rule uses what I paid now, not what I paid when I created it.
+47. As an Owner resuming a Private Rule on an Instrument I no longer hold, I want the resume refused with the reason ("You no longer hold AAPL") and the Alert left Paused, so that I understand why it can't run.
+48. As an Owner, I want pausing an already-Paused Alert, or resuming an already-Active one, to change nothing, so that a double-click or a retry is harmless.
+49. As an Owner, I want to delete an Alert after an in-page confirmation, so that I can remove Alerts I no longer need without deleting one by accident.
+50. As an Owner, I want a deleted Alert gone for good (not in the list, and its URL shows "not found"), so that deleting means what it says.
+
+### Privacy and ownership
+
+51. As an Owner, I want nobody else to be able to see, open, edit, pause, resume or delete my Alerts, so that my Alerts and what they reveal about my Holdings stay private.
+52. As a Person who opens a link to someone else's Alert, I want to see the same "not found" as for an Alert that doesn't exist, so that I can't even tell it exists.
+53. As an Owner, I want my Alert ids to be random, so that nobody can walk through other people's Alerts by guessing ids.
+54. As an Owner, I want my Alert Title never to leave my own pages, so that a note like "bought 25 @ 280.00" stays private.
+
+### The Checking team (the rule contract)
+
+55. As the Checking team, I want every change that affects checking (create, Rule change, pause, resume, delete, a re-resolved Price Paid) to produce one full-state rule message in the §5 shape, so that I can build against a real contract.
+56. As the Checking team, I want each rule message written in the same transaction as the Alert change, so that a message exists if and only if the change committed.
+57. As the Checking team, I want messages for one Alert ordered by an increasing `version` that may skip numbers, so that I can apply the latest and ignore older ones.
+58. As the Checking team, I want `rule_revision` to change only when the Rule changes, so that every Match I report can name the Rule that matched.
+59. As the Checking team, I want a Private Rule to reach me as a plain threshold with nothing marking it as private, so that every Rule I see has the same shape (ADR-0001).
+60. As the Checking team, I want numbers as decimal strings, so that SHIB/USD's 8 decimals survive without float noise.
+61. As the Checking team, I want a deleted Alert to send `state: "deleted"` with `rule: null`, so that I know to forget it.
+62. As the Checking team, I don't want the Alert Title, and I don't want a message for a change that doesn't affect checking (a title-only edit or an unchanged save), so that I only hear about what matters.
+
+### The future Visitor (the public projection)
+
+63. As a future Visitor to a Shared Link, I want the public view of an Alert never to include the Alert Title or anything that comes from a Holding, so that the Owner's private information can't reach me (ADR-0002).
+64. As a future Visitor, I want the public view to describe the Rule with the generated Rule Description only, so that no text the Owner typed is ever shown to me.
+65. As an Owner, I want an Alert with a Private Rule to have no public view at all, so that even the fact that I hold the Instrument stays private.
+
+### Running and reviewing it
+
+66. As a reviewer, I want the README to explain how to install, run and test the app, and where the database lives, so that I can try it in minutes.
+67. As a reviewer, I want the database created automatically on first start, so that there's no setup step.
+68. As a reviewer, I want the README to say that sign-in is the scaffold's unsigned demo persona cookie, standing in for the site's real session, so that nobody takes it for real authentication.
+69. As a developer, I want to be able to point the app at a different database file, so that browser tests don't mix their data with my dev data.
+
+## Implementation Decisions
+
+### Scope and the design
+
+- Build exactly what design §11 lists. Its "Not built" list is the out-of-scope list here.
+- The counter rules (`rule_revision` and `version`), Private Rule behaviour and "who can see what" come from design §3. The rule message comes from design §5. The public projection comes from design §8. Where this spec is more specific, this spec wins for step 2.
+
+### Modules
+
+- **Rule schema.** One Zod schema for Rule input, used by the form for immediate feedback and by the server as the authority. The Rule is a discriminated union by Rule Kind:
+  - Price: a direction (above or below) and a threshold source, which is either a typed price or Price Paid.
+  - Percentage: a direction (rises or falls) and a percent.
+
+  Some checks depend on the Instrument (how many decimals it allows) or on the Owner (whether they hold it). The schema is built for a given Instrument, and the server adds the Holding check. Limits: price > 0 with no more decimals than the Instrument's `decimals`; falls 0 < N < 100; rises 0 < N ≤ 1000; Alert Title optional, trimmed, at most 80 characters, and an empty title means no title.
+- **Decimal handling.** Thresholds and percents are kept, compared and sent as normalised decimal strings. "Normalised" means `5` and `5.00` are equal. They are never binary floats. Price Paid in the holdings fixture is a float (SHIB/USD is `6.12e-6`), so it's converted to a plain decimal string without float noise (about 15 significant digits, no exponent). Values are formatted to the Instrument's decimals for display, using the existing price formatter.
+- **Rule Description.** A pure function that turns a Rule and its Instrument into words. It has an Owner form, which may say "what you paid (291.40)", and a public form. The public form is never produced for a Private Rule. The Description is generated only from the Rule, never from anything the Owner typed.
+- **Alerts domain module** (the deep module and the main test seam). It receives three things from outside:
+  - a database handle
+  - a Holdings lookup: (Person, Symbol) → Holding or none
+  - a clock
+
+  It uses the existing Instrument catalogue directly. It exposes:
+  - **create**: from the Owner, a caller-supplied Alert id and the input.
+  - **update**: from the Owner, the Alert id, the `version` the caller loaded, and the new Rule and Alert Title.
+  - **pause** and **resume**.
+  - **delete**.
+  - **list**: all of the Owner's Alerts.
+  - **get**: one Alert, for the Owner.
+  - **public projection**: one Alert.
+  - **pending rule messages**: the outbox, in order. This is what the future Rule Relay will read, and it is how tests observe the contract.
+
+  Every Owner-facing operation takes the Owner as its own argument and scopes every read and write by both the Alert id and the Owner. Outcomes are typed results rather than thrown strings: not found, stale version (carrying the latest Alert), validation errors by field, Holding missing, and success with the resulting Alert.
+- **Alerts server functions.** Thin adapters in the house idiom: `.validator(...)` with the shared schema, and handlers that dynamically import server-only modules. One shared helper resolves the Owner from the session. No server function accepts an Owner, a Person or an `owner_id` in its input. With no session the helper refuses the call. The domain module is opened once per server process, against the configured database file.
+- **Routes and UI.** Built with the shadcn components already in the project:
+  - `/alerts`: the list, with search, filters, sort and "New alert".
+  - A new-Alert form, which accepts an optional Symbol to prefill.
+  - An Alert's own page, which is the edit form, plus pause, resume and delete.
+  - A "Create alert" action on the Instrument page.
+  - An "Alerts" link in the header.
+
+  Route loaders run on the server. A signed-out Person is redirected to `/sign-in`. A missing or foreign Alert renders "not found" from the loader. The delete confirmation is an in-page dialog, not a browser `confirm()`.
+
+### Storage
+
+- SQLite through `node:sqlite`, in a file under `./data/` by default. A `DATABASE_PATH` setting overrides it (tests use `:memory:` or a temp file). The schema is created idempotently on first open. `/data/` is added to `.gitignore`.
+- Tables:
+  - **alerts**: id, Owner, Symbol, Alert Title, state, Rule Kind, direction, threshold source (typed or Price Paid), threshold, percent, `rule_revision`, `version`, created and updated times.
+  - **matches**: empty in step 2, but real, so that "a Rule change clears Matches, a pause keeps them" is enforced and testable. Reads always filter by the Alert's current `rule_revision`.
+  - **alert_pauses**: pause and resume moments for the current Rule Revision, recorded now so that Match After Pause can be worked out later (design §6). Nothing reads it in step 2.
+  - **rule_outbox**: ordered, holding the §5 message.
+- **Deleted Alerts leave a tombstone.** The row keeps its id, Owner and final `version`. Its Title and Rule are cleared, its Matches are deleted, and it is invisible to every read. This way a late retry of the original create can't bring a deleted Alert back.
+
+### Behaviour
+
+- **Create** is idempotent on the Alert id. The browser generates the id once per form (`a-` followed by at least 128 random bits, URL-safe) and sends it with every attempt.
+  - Same id and same Owner: the existing Alert is returned unchanged, whatever the payload.
+  - Id belonging to a tombstone or to another Owner: rejected without revealing anything.
+  - A malformed id: rejected.
+  - A new Alert starts at `rule_revision` 1, `version` 1, state Active, and writes one outbox row.
+- **Update** requires the `version` the form loaded. If it doesn't match, the result is stale version, carrying the latest Alert. The UI shows "This alert changed since you opened it" with the latest values.
+  - Changes are compared after normalising.
+  - Unchanged: nothing is written, and `version` doesn't move.
+  - Title-only change: `version` + 1, no Rule Revision, no outbox row.
+  - Rule change: `rule_revision` + 1 and `version` + 1, the Alert's Matches are deleted, and one outbox row is written.
+  - Switching between Price Paid and a typed price is always a Rule change, even at the same number.
+  - A Private Rule's threshold is resolved from the Holding at save time.
+- **Pause** and **resume** don't carry a `version`, because they're idempotent transitions. Pausing a Paused Alert or resuming an Active one is a no-op: no `version` bump, no outbox row.
+  - A real pause or resume: `version` + 1, one outbox row, a pause-interval record, and the Matches are kept.
+  - Resuming a Private Rule re-checks the Holding. If it's gone, the result is Holding missing and the Alert stays Paused. If Price Paid changed, the Alert gets a new threshold and Rule Revision (clearing Matches) in the same transaction as the resume, with one outbox row for the combined state.
+- **Delete**: `version` + 1, a tombstone, and one outbox row with `state: "deleted"` and `rule: null`. Deleting a missing, foreign or already-deleted Alert returns not found. The UI treats that as "already gone".
+- **Outbox message**: exactly the design §5 shape: `alert_id`, `version`, `rule_revision`, `person_id`, `symbol`, `state`, and `rule` with decimal-string numbers and `baseline: "todays_open"` for Percentage. It carries no Alert Title and no marker that the Rule is private. Nothing publishes it in step 2.
+- **Public projection**: one query and serializer. It selects an explicit list of public columns: Symbol, Instrument name, public Rule Description, state, latest Match of the current revision, and the Instrument's Checked-through (none in step 2, so Not Yet Checked). It returns nothing for Private Rules, as part of the query itself, and nothing for tombstones. It never includes the Alert Title, the Owner, or anything that comes from a Holding. It's keyed by Alert id for now; the future `/s/$token` route must read through it and nothing else.
+- **Status wording**: every Alert shows "Not yet checked". No Match line, no "No matches", no "Last matched: never", and no wording about notifications. Paused Alerts show "Paused".
+- **List**: one query per page load returns all of the Owner's Alerts. There's no pagination. Search, filters and sort (newest, Symbol) run in the browser. "Recently matched" isn't offered while there are no Matches.
+- **Identity**: keep the scaffold's demo persona cookie. It's unsigned, and the README must say it stands in for the site's real session.
+
+### Tooling
+
+- Bump `@types/node` so that `node:sqlite` has types.
+- **Check first** that Vite SSR externalises `node:sqlite` in `vite dev` and in `vite build` / `vite preview`. It's unverified, and the whole storage choice rests on it. Vite runs on Node 24 even under `bun run`, so `node:sqlite` is available at runtime.
+- Playwright's web server runs with its own `DATABASE_PATH`. Locally it may reuse a running dev server, so browser tests also create uniquely named data and never assume an empty database.
+
+## Testing Decisions
+
+- **What a good test is here.** It drives a public interface and asserts on what an outsider can observe: returned Alerts and results, what `list` and `get` return afterwards, the outbox messages (the contract), the public projection's output, and what the page shows. It doesn't assert on table layouts or internal helpers. Nothing is mocked in SQLite: tests use a real in-memory database. Only the Holdings lookup and the clock are replaced, because they are the module's real outside dependencies.
+- **Seam 1: the Alerts domain module (Vitest)**, confirmed with the user. It covers:
+  - Validation at each boundary: price 0, too many decimals for AAPL and for SHIB/USD, falls 0 / 100 / 99.99, rises 1000 / 1000.01, a Title of 80 and 81 characters, a blank Title.
+  - Create gives revision 1, version 1, Active, and one outbox row in the §5 shape.
+  - Idempotent create: same id and same Owner returns the same Alert with a single outbox row. The same id for another Owner, or after delete, is rejected.
+  - Rule change bumps both counters, clears Matches and writes one outbox row. Title-only change bumps `version` only, keeps Matches and writes no outbox row. An unchanged save, or `5` over `5.00`, changes nothing. Price Paid ↔ typed price at the same number is a new Rule Revision.
+  - A stale `version` is rejected with the latest Alert, and nothing is written.
+  - Private Rules: create resolves Price Paid, SHIB/USD included, into a decimal string with no float noise. Create without a Holding is rejected. Resume re-resolves (a changed Price Paid gives a new revision, cleared Matches and one combined outbox row). Resume with the Holding gone is refused and leaves the Alert Paused.
+  - Pause and resume: `version` bumps, one outbox row each, Matches kept, and repeats are no-ops.
+  - Delete writes the `deleted` message, and afterwards the Alert is not found everywhere.
+  - Outbox messages carry no Alert Title and nothing marking a Private Rule, and `version` strictly increases per Alert.
+  - **Public projection**, asked for explicitly: seed an Alert titled `"bought 25 @ 280.00"` and assert the serialized projection contains neither the title nor any part of it. A Private Rule gets no projection. The description is the generated public Rule Description.
+  - **Owner scoping on the server**, asked for explicitly: for each of get, update, pause, resume and delete, a different Owner gets exactly the not-found result a missing id gets, and nothing changes (no `version` bump, no outbox row). `list` returns only the caller's Alerts.
+  - Matches are seeded directly into the store where a test needs them. That is the only place a test touches storage, and it stands in for the future Ingest.
+- **Seam 2: the browser path (Playwright)**, confirmed with the user. Scenarios:
+  - Sign in as Ava. Create a Price Alert and a Private Rule on AAPL ("What I paid (291.40)"). Reload and both are still there, showing "Not yet checked".
+  - Edit the Rule and see the new Rule Description.
+  - Pause and resume from the list.
+  - Delete through the in-page dialog.
+  - Sign in as Liam: Ava's Alert is absent from `/alerts`, and opening its URL directly shows "not found" from the server loader.
+  - Open `/alerts` signed out and land on `/sign-in`.
+  - Open the stale-edit warning from two tabs.
+- **Prior art.** The colocated Vitest unit tests for the instrument catalogue and the price formatter show the house Vitest style. The existing Playwright suite shows the browser style: role- and name-based locators, and collecting `pageerror` to assert a clean page. The pre-commit hook runs Vitest, and CI builds and runs the Chromium browser suite, so both seams run on every change.
+
+## Out of Scope
+
+- The Rule Relay (publishing the outbox), Event Ingest, Checked-through, and real Matches arriving. The `matches` table exists but only tests write to it.
+- Status other than "Not yet checked": Current, Stale, "Last matched …", Match After Pause labels, and the "checking is delayed" banner.
+- Shared Links: the `/s/$token` route, tokens, share and stop-sharing actions, revocation, CDN caching. Only the public projection is built.
+- The Holdings worker and automatic pausing when a Holding goes away. Holdings are the static fixture in step 2; a changed or missing Holding is exercised only through the injected lookup in tests and through resume.
+- Polling or live refresh of the Alerts page.
+- Real authentication; Postgres; translations of the UI or of Rule Descriptions.
+- Rule Kinds beyond Price and Percentage (Volume was dropped in the design).
+
+## Further Notes
+
+- **ADR alignment.** Resolving Price Paid into a plain threshold at save time and on resume follows ADR-0001. The projection refusing Private Rules follows ADR-0002. The outbox written in the same transaction as the change follows ADR-0003. Nothing here contradicts an ADR.
+- **Decisions this spec adds to the design** (all confirmed by the user on 2026-09-27; the `alert_pauses` table is confirmed too). Consider folding these into `docs/design.md` after the build:
+  - tombstones for deleted Alerts, so an idempotent create can't resurrect one
+  - pause and resume as version-free, idempotent transitions
+  - a refused resume when the Holding is gone
+  - no "recently matched" sort while there are no Matches
+- **Judgement calls in the design not yet confirmed by the user** don't block step 2, because none of them is built here: Match After Pause computed when reading, the exact matching formulas, inbound retention, 410 caching, the Relay leader lock, `dead_letters`, and the language path prefix for Shared Links.
+- The brief asks for the run steps; the README update is part of this work.
