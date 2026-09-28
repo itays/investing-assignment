@@ -209,7 +209,7 @@ Another Person can't see or change someone else's Alert. The server checks this 
 ### Tooling
 
 - Bump `@types/node` so that `node:sqlite` has types.
-- **Check first** that Vite SSR externalises `node:sqlite` in `vite dev` and in `vite build` / `vite preview`. It's unverified, and the whole storage choice rests on it. Vite runs on Node 24 even under `bun run`, so `node:sqlite` is available at runtime.
+- **Check first** that Vite SSR externalises `node:sqlite` in `vite dev` and in `vite build` / `vite preview`. It's unverified, and the whole storage choice rests on it. Vite and Vitest run on Node even under `bun run` (their shebangs), so Node must be 22.13 or newer for `node:sqlite` without a flag. `.nvmrc` pins 24, `engines` states the minimum, and CI installs it with `actions/setup-node`.
 - Playwright's web server runs with its own `DATABASE_PATH`. Locally it may reuse a running dev server, so browser tests also create uniquely named data and never assume an empty database.
 
 ## Testing Decisions

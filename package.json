@@ -2,6 +2,9 @@
   "name": "investing-assignment",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",

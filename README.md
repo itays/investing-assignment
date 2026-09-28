@@ -40,7 +40,9 @@ Step 2 is built: a signed-in Person can create, edit, pause, resume and delete A
 
 ### Prerequisites
 
-Install [Bun](https://bun.sh/) and clone the repository, then run:
+Install [Bun](https://bun.sh/) and [Node.js](https://nodejs.org/) 22.13 or newer (`.nvmrc` pins 24). Bun installs packages and runs scripts, but Vite and Vitest run on Node, and Alerts use Node's built-in `node:sqlite`.
+
+Clone the repository, then run:
 
 ```bash
 bun install
