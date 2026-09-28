@@ -1,0 +1,9 @@
+{
+  "agentType": "general-purpose",
+  "description": "Spec review of alerts diff",
+  "toolUseId": "toolu_019Pv9eHRTaVRyHZd8bh6Cfe",
+  "spawnDepth": 1,
+  "requestShape": "background",
+  "requestNonInteractive": true,
+  "model": "opus"
+}

@@ -1,0 +1,9 @@
+{
+  "agentType": "general-purpose",
+  "description": "Build alerts routes and UI",
+  "toolUseId": "toolu_014ALfsQ9DPAGYtzGWY99Zqw",
+  "spawnDepth": 1,
+  "requestShape": "background",
+  "requestNonInteractive": true,
+  "model": "opus"
+}

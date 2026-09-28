@@ -1,0 +1,625 @@
+docs:
+adr
+agents
+design.md
+specs
+
+docs/adr:
+0001-resolve-private-thresholds-before-the-checking-system.md
+0002-private-rules-are-never-shared.md
+0003-durable-logs-between-web-app-and-checking-system.md
+# Alerts
+
+## Before you start
+
+Use AI. We expect you to, and we give you an account so it costs you nothing. Two things we
+ask about that account: work with Sonnet or Opus, not Fable, and leave credit billing off.
+The account works in five-hour usage windows, and this exercise is meant to fit inside one.
+
+We read the session transcripts too — we like seeing how somebody works with an agent. Step 3
+says how to collect them.
+
+## Where this sits
+
+We run a financial markets site used by millions of people around the world. They follow
+instruments — shares, currencies, commodities like gold and oil, crypto — listed on dozens of
+exchanges, and they read the site in many languages.
+
+Prices move all day. Traffic is not flat: it climbs when a big market opens and when news
+breaks, and it never fully stops, because somewhere a market is always open.
+
+People already keep lists with us — the instruments they own, and the instruments they only
+follow. What somebody owns, and the price they paid for it, is private.
+
+We expect to hold about a hundred thousand alerts, and we expect them to crowd together:
+most sitting on a handful of popular instruments — the S&P 500, Bitcoin, EUR/USD, Tesla —
+whose prices change many times a second.
+
+## What we want to build
+
+People who follow an instrument want to be told when something happens to it. Each person
+decides for themselves what "something" means — for example, this price falling 5% from where
+it started the day. How they express that is your decision.
+
+**You are designing the web application**: the browser side and the web server behind it —
+how a person creates and manages their alerts, and what they and other people see. Another
+team builds the part that checks those alerts and sends the notifications.
+
+The alerts do not exist yet.
+
+It has to:
+
+- let a person set up an alert, change it, pause it, or delete it;
+- let a rule use something private to that person, not only the price everybody can see —
+  "tell me when this drops below the price I paid for it". We hold what each person owns and
+  what they paid;
+- show each alert: whether it is on, when it last matched, and how recently its instrument
+  was checked. Changing a rule starts its match history over;
+- work for a person who has hundreds of alerts of their own;
+- let an owner share some of their alert information through a public link, and keep the
+  rest private;
+- never expose the owner's private information through a shared link — not to a visitor, and
+  not to the owner opening their own link;
+- let an owner stop sharing, after which the link stops working;
+- serve a popular shared link to thousands of visitors in the same minute, with most of that
+  traffic landing on a few links;
+- keep working when the checking system is down or delayed, without showing anybody
+  something misleading.
+
+## What the checking system sends you
+
+All of that rests on one input. Everything you show comes from the checking system, one
+message at a time — you never see the price feed, and the only price that reaches you is the
+one that matched. There are two kinds of message, one about an alert and one about an
+instrument:
+
+```json
+{"event_id": "evt_004413", "alert_id": "a-4417", "rule_revision": 7,
+ "matched_at": "2026-08-24T09:30:58.004Z", "price": 316.46}
+{"event_id": "evt_004412", "symbol": "AAPL", "checked_through": "2026-08-24T09:31:02.118Z"}
+```
+
+The second one says every alert on that instrument has been checked against every price up
+to that moment. While the checking system is working normally it arrives every few seconds for
+each instrument somebody has an alert on, whether or not anything matched.
+
+How that system behaves:
+
+- the same message can arrive more than once. Two messages with the same `event_id` say the
+  same thing;
+- messages can arrive late, and out of the order the events happened in;
+- `rule_revision` is the version of the rule that matched. You give it to the checking system
+  when you save a rule, and a match for an old version can still arrive after you change it;
+- the one exception to that: a `checked_through` time only moves forward once everything up
+  to it has been checked, and it reaches you only after the matches it covers;
+- the checking system can go quiet for a long time and then deliver everything it held back
+  at once;
+- a symbol names one instrument in our system;
+- these two messages are everything it sends.
+
+## 1. Design it
+
+Pick your stack. Write your design.
+
+Write it in whatever form suits you. We have no template, and we do not count
+pages.
+
+Name the parts and what passes between them. Say what happens when the web server restarts,
+when the checking system delivers a large batch after a quiet spell, when the same message
+arrives twice, and when one shared link takes most of your traffic.
+
+You do not have to build any of it in this step.
+
+Where you chose one option over another, say briefly why.
+
+Say which part you would build first, and why. Step 2 names one for you — if it is not the
+part you would have chosen, say so.
+
+## 2. Build one part of it
+
+We give you a scaffold so you can skip the setup. Its stack is only a starting point, not
+the stack we expect you to pick. Change it, replace it, or ignore it.
+
+Build this part: **writing a rule.** A person creates an alert, changes it, and pauses it,
+including a rule that refers to what they hold. How a person expresses the rule is your
+decision.
+
+Build the whole path, from the browser to somewhere the alert is kept. A person who comes
+back finds the same alerts they left.
+
+Include the steps to run it.
+
+## 3. Send us your work
+
+Your design, your code, and the transcripts of the sessions you ran here.
+
+**The transcripts.** Claude Code writes them as it goes: a `<session-id>.jsonl` file per
+session, and a `<session-id>/` folder next to it holding the transcripts of any subagents that
+session ran. We want both, for every session you worked in.
+
+They usually live under `~/.claude/projects`, in an entry named after the folder the agent ran
+in. From the repository, in a macOS or Linux shell, this normally collects them:
+
+```bash
+mkdir -p transcripts
+cp -R ~/.claude/projects/"$(pwd | tr '/.' '--')"/. transcripts/
+```
+
+There is one entry per folder, so if you ran the agent from more than one place — a subfolder,
+a worktree, a second copy of the repository — there is an entry for each, and we want them
+all. If your setup keeps them elsewhere, or that path is not there, they are somewhere else on
+your machine: find them, or ask the agent to — *put every session transcript for this project,
+subagent transcripts included, in ./transcripts*. On Windows, ask the agent for the commands
+that suit your shell.
+
+That folder holds a little more than the transcripts: cached tool output, and the paths on
+your machine the agent worked in. Look through it before you send it, and take out anything
+you would rather we did not read.
+
+**The pack.** Commit everything, then pack the repository into one file:
+
+```bash
+git add -A && git commit -m "Submission" \
+  && git bundle create ../fullstack-submission.bundle --all
+```
+
+If git says there is nothing to commit, you are already clean — run the `git bundle` line on
+its own.
+
+A bundle is your repository in one file: every commit you made, and nothing git does not
+track, so `node_modules`, build output, and your machine's own files stay behind. Anything you
+did not commit does not travel.
+# Market Desk Alerts
+
+People who follow market instruments set up alerts on them, manage those alerts, and can share an alert through a public link. A separate Checking System evaluates the alerts and sends the notifications; this context owns what an alert is and what people see about it.
+
+## Language
+
+### People
+
+**Person**:
+Someone signed in to the site; the only kind of identity that can own anything.
+_Avoid_: user, account, customer
+
+**Owner**:
+The Person an Alert belongs to.
+_Avoid_: creator, author
+
+**Visitor**:
+Anyone who opens a Shared Link — signed in or not, the Owner included. Every Visitor sees the same thing.
+_Avoid_: guest, viewer, public user
+
+### Market
+
+**Instrument**:
+One tradable thing — a share, currency pair, commodity, index, ETF or bond — named by exactly one Symbol.
+_Avoid_: ticker, asset, security, stock
+
+**Symbol**:
+The unique name of an Instrument, such as `AAPL` or `EUR/USD`.
+_Avoid_: ticker, code
+
+**Holding**:
+What a Person owns of one Instrument: the quantity and the Price Paid. Private to that Person.
+_Avoid_: position, portfolio entry
+
+**Price Paid**:
+The price a Person paid for a Holding. Private.
+_Avoid_: cost basis, entry price, buy price
+
+**Today's Open**:
+An Instrument's first price of the current day, where the Checking System decides when each Instrument's day starts.
+_Avoid_: day start price, previous close
+
+### Alerts
+
+**Alert**:
+An Owner's standing request to be told when a Rule matches on one Instrument. The Instrument never changes for the life of the Alert; an Owner can have any number of Alerts on the same Instrument.
+_Avoid_: notification, watch, trigger
+
+**Alert Title**:
+An optional name the Owner gives an Alert to find it among many. Private: it is owner-written text, so it never appears on a Shared Link.
+_Avoid_: label, name, note
+
+**Rule**:
+The condition an Alert watches for, of exactly one Rule Kind.
+_Avoid_: condition, criteria, filter
+
+**Rule Description**:
+The Rule in words, generated from the Rule itself — never from anything the Owner typed. It is the only description of an Alert a Shared Link shows.
+_Avoid_: summary, title
+
+**Rule Kind**:
+What a Rule compares. **Price**: the Instrument's price goes above or below a threshold — either a price the Owner enters or the Owner's Price Paid. **Percentage**: the Instrument's price rises or falls by a given percentage from Today's Open.
+_Avoid_: alert type
+
+**Private Rule**:
+A Rule whose threshold comes from the Owner's Holding — a Price Rule set at the Owner's Price Paid. It follows the Holding: a new Price Paid makes a new Rule Revision. An Alert with a Private Rule can never have a Shared Link.
+_Avoid_: price-paid alert, holding alert
+
+**Rule Revision**:
+The version of an Alert's Rule. Every change to the Rule — by the Owner, or a new Price Paid behind a Private Rule — makes the next Rule Revision and starts the Alert's Match history over.
+_Avoid_: version, rule version
+
+**Active** / **Paused**:
+Whether the Alert should currently be checked. The Owner pauses and resumes an Alert; an Alert is also Paused automatically when the Holding behind its Private Rule is gone. Pausing never makes a new Rule Revision.
+_Avoid_: enabled/disabled, on/off, armed
+
+**Match**:
+The Checking System's report that one Rule Revision's condition became true at a moment, with the price at that moment. A Rule matches each time its condition becomes true, not continuously while it stays true; if the condition already holds on the first check after the Rule is saved or resumed, that counts as becoming true.
+_Avoid_: trigger, fire, hit
+
+**Match After Pause**:
+A Match whose moment falls after the Owner paused the Alert — the Checking System had not applied the pause yet. It is shown as what the Checking System reported, never as something the Owner was told about.
+_Avoid_: late match (a late Match is any Match that arrives after its moment)
+
+**Checked-through**:
+The moment up to which every Alert on an Instrument has been checked against every price. It only moves forward.
+_Avoid_: last checked, heartbeat, last update
+
+**Stale**:
+An Instrument whose Checked-through is more than 60 seconds old; what is shown about its Alerts may be missing recent Matches. The opposite is **Current**.
+_Avoid_: offline, down, outdated
+
+**Not Yet Checked**:
+An Alert whose current Rule Revision is not known to be covered by its Instrument's Checked-through, so nothing can be said yet about whether the new Rule has matched — including "no matches".
+_Avoid_: awaiting first check, pending, submitted
+
+**Checking System**:
+The separate system that evaluates Rules against prices, reports Matches and Checked-through, and sends the notifications.
+_Avoid_: engine, evaluator, matcher
+
+**Shared Link**:
+A public, unguessable link to one Alert without a Private Rule, showing only that Alert's public information. Once the Owner stops sharing, the link is dead for good; sharing again makes a new link.
+_Avoid_: share, public link, permalink
+     1	# Alerts — design
+     2	
+     3	People who follow an instrument set up alerts on it, manage them, and can share one through a public link. This document designs the web application for that: the browser side, the web server, the workers that sit next to it, and where things are kept. Another team's **Checking System** evaluates the alerts and sends the notifications.
+     4	
+     5	Capitalised terms (Alert, Rule Revision, Checked-through, …) are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions that are hard to reverse have an ADR in [`docs/adr/`](./adr/).
+     6	
+     7	## Contents
+     8	
+     9	1. [Scope](#1-scope)
+    10	2. [Stack, and why](#2-stack-and-why)
+    11	3. [The domain](#3-the-domain)
+    12	4. [Parts, and what passes between them](#4-parts-and-what-passes-between-them)
+    13	5. [The rule contract](#5-the-rule-contract)
+    14	6. [Applying the Checking System's messages](#6-applying-the-checking-systems-messages)
+    15	7. [What people see](#7-what-people-see)
+    16	8. [Shared Links](#8-shared-links)
+    17	9. [Scenarios](#9-scenarios)
+    18	10. [What we build first, and why](#10-what-we-build-first-and-why)
+    19	11. [Step 2: what is built](#11-step-2-what-is-built)
+    20	12. [Assumptions to confirm with the Checking team](#12-assumptions-to-confirm-with-the-checking-team)
+    21	
+    22	---
+    23	
+    24	## 1. Scope
+    25	
+    26	**Ours:** the pages an Owner uses to create and manage Alerts, the public page behind a Shared Link, the web servers and workers behind them, and their storage.
+    27	
+    28	**Not ours:** the price feed, evaluating Rules, and sending notifications — the Checking System does all three. We never see a price except the one inside a Match. The instrument catalogue, sign-in and the Holdings service already exist on the site.
+    29	
+    30	| Requirement (TASK.md) | Where |
+    31	|---|---|
+    32	| Set up, change, pause, delete an Alert | §3, §5, §11 |
+    33	| A Rule that uses the Owner's private data (Price Paid) | §3, [ADR-0001](./adr/0001-resolve-private-thresholds-before-the-checking-system.md) |
+    34	| Show on/off, last Match, how recently checked; a Rule change restarts history | §3, §6, §7 |
+    35	| An Owner with hundreds of Alerts | §7 |
+    36	| Share through a public link without exposing private information, even to the Owner | §8, [ADR-0002](./adr/0002-private-rules-are-never-shared.md) |
+    37	| Stop sharing, after which the link stops working | §8 |
+    38	| A popular Shared Link with thousands of Visitors a minute | §8, §9 |
+    39	| Keep working when the Checking System is down or delayed, without misleading anyone | §7, §9 |
+    40	| Restart, burst after a quiet spell, duplicate message, one hot link | §9 |
+    41	
+    42	## 2. Stack, and why
+    43	
+    44	| Choice | Why | Instead of |
+    45	|---|---|---|
+    46	| **TanStack Start** (React 19, SSR, server functions) | SSR gives Shared Link pages as complete HTML a CDN can cache; server functions give the Owner's pages typed, validated mutations without a separate API service. It is also what the scaffold uses. | An SPA plus a separate REST service: one more deployable, and the public page would still want SSR. |
+    47	| **Postgres** as the system of record | The load is small (about 100k Alerts); what matters is correctness. One transaction writes an Alert change and its outgoing rule message (an outbox); `INSERT … ON CONFLICT DO NOTHING` and `GREATEST()` make applying the Checking System's messages idempotent. | A key-value store: the hard part is transactions, not scale. |
+    48	| **Durable logs** (Kafka or equivalent) in both directions | Survives restarts and bursts on either side; see [ADR-0003](./adr/0003-durable-logs-between-web-app-and-checking-system.md). | HTTP webhooks into the web servers; the Checking System pulling from our API. |
+    49	| **CDN** with surrogate-key hard purge | Absorbs the only hot read path (popular Shared Links) close to Visitors, and can drop a revoked link on demand. | A Redis cache tier in front of Postgres: still sends every Visitor to our servers. |
+    50	| **Zod** | One schema for a Rule, run in the browser for feedback and on the server as the authority. | Duplicated validation. |
+    51	| **SQLite** (`node:sqlite`) — step 2 only | Zero setup for anyone running the build; kept behind one repository module so the SQL stays close to what Postgres would run. | Postgres in Docker: the build is about the write path, not the database. |
+    52	
+    53	## 3. The domain
+    54	
+    55	An **Owner** has any number of **Alerts**. Each Alert has:
+    56	
+    57	- one **Instrument**, fixed for the Alert's life — an Owner may have several Alerts on the same Instrument;
+    58	- an optional **Alert Title**, private to the Owner;
+    59	- a state, **Active** or **Paused**;
+    60	- one **Rule**, of one **Rule Kind**:
+    61	
+    62	| Rule Kind | Direction | Threshold | Rule Description (generated) |
+    63	|---|---|---|---|
+    64	| Price | goes above / goes below | a price the Owner enters | "AAPL goes below 300.00" |
+    65	| Price — a **Private Rule** | goes above / goes below | the Owner's **Price Paid**, resolved when saved | "AAPL goes below what you paid (291.40)" — Owner only |
+    66	| Percentage | rises / falls | N% from **Today's Open** | "BTC/USD falls 5% from today's open" |
+    67	
+    68	A Volume kind was considered and dropped: the brief only promises that the Checking System sees prices, and "below" means nothing on a figure that restarts from zero every day.
+    69	
+    70	**When a Rule matches.** A Rule matches when its condition *becomes* true, not continuously while it stays true, and re-arms once the condition is false again. If the condition already holds on the first check after the Rule is saved or resumed, that counts as becoming true — "tell me when AAPL is below 320", saved while AAPL is at 309, should tell the Owner now.
+    71	
+    72	**Two counters.**
+    73	
+    74	- `rule_revision` changes only when the Rule changes: a new kind, direction or threshold; switching between Price Paid and a typed price, even to the same number (the Rule's meaning changed); or a new Price Paid behind a Private Rule. Values are compared after normalising, so saving `5` over `5.00`, or saving the form unchanged, is not a change. A new Rule Revision clears the Alert's Matches.
+    75	- `version` goes up on every change to the Alert — Rule, title, pause, resume, delete. It orders rule messages for the Checking System and catches edits made from a stale page. It only ever increases, but the Checking System may see it skip numbers, because title changes send it nothing.
+    76	
+    77	Pausing and resuming never make a Rule Revision, so the Match history is kept.
+    78	
+    79	**Private Rules** ([ADR-0001](./adr/0001-resolve-private-thresholds-before-the-checking-system.md), [ADR-0002](./adr/0002-private-rules-are-never-shared.md)). The web server resolves Price Paid into a plain number when the Rule is saved; the Checking System gets only that number. The Rule follows the Holding:
+    80	
+    81	- a new Price Paid gives each Private Rule on that Holding a new threshold and a new Rule Revision — even while the Alert is Paused, so resuming uses the right number;
+    82	- if the Holding is gone, the Alert is Paused automatically, with the reason shown ("You no longer hold AAPL");
+    83	- an Alert is never resumed automatically. Resuming a Private Rule checks that the Holding still exists and resolves Price Paid again.
+    84	
+    85	**Who can see what.** Every server function takes the Owner from the session, never from its input, and every read or write of an Alert is scoped by its id *and* its Owner; someone else's Alert answers the same "not found" as a missing one. Alert ids are random, not sequential. The Owner sees their own Price Paid in the rule form — it is theirs.
+    86	
+    87	## 4. Parts, and what passes between them
+    88	
+    89	```mermaid
+    90	flowchart LR
+    91	  owner["Owner's browser"] -- "pages, server functions" --> web
+    92	  visitor["Visitor's browser"] -- "/s/token" --> cdn["CDN"]
+    93	  cdn -- "cache miss" --> web["Web servers<br/>TanStack Start"]
+    94	  web -. "purge on revoke" .-> cdn
+    95	  web -- "Alert change + outbox row<br/>in one transaction" --> pg[("Postgres")]
+    96	  web -- "Price Paid" --> holdings["Holdings service"]
+    97	  pg -- "outbox rows" --> relay["Rule Relay"]
+    98	  relay -- "alert-rules log<br/>compacted" --> checking["Checking System"]
+    99	  checking -- "checking-events log<br/>retained, not compacted" --> ingest["Event Ingest"]
+   100	  ingest --> pg
+   101	  holdings -- "holding changed" --> hworker["Holdings worker"]
+   102	  hworker -- "new revision or auto-pause<br/>+ outbox row" --> pg
+   103	```
+   104	
+   105	| Part | Does | Keeps |
+   106	|---|---|---|
+   107	| **Web servers** | Serve Owner pages, server functions and Shared Link pages. Several, stateless, behind a load balancer. | Nothing of record. |
+   108	| **Postgres** | System of record. | `alerts` (current Rule, `rule_revision`, `version`, state, title, when the current revision was published), `alert_pauses` (pause/resume moments for the current revision), `matches` (≤ 20 per Alert), `instrument_checks` (Checked-through per Symbol), `shared_links`, `rule_outbox`, `dead_letters`. |
+   109	| **Rule Relay** | Reads the outbox in order and publishes each message to `alert-rules`, keyed by `alert_id`. Records when the log accepted it — the moment a Rule Revision was handed over. One active instance (leader lock). | Its position in the outbox. |
+   110	| **Event Ingest** | Applies `checking-events` to Postgres (§6). One consumer. | Its offset, committed after each database transaction. |
+   111	| **Holdings worker** | Turns holding changes into new Rule Revisions or automatic pauses. | Its offset. |
+   112	| **CDN** | Caches Shared Link pages and their JSON for a few seconds; purged on revocation. | Short-lived copies. |
+   113	
+   114	Relay, Ingest and the Holdings worker are separate processes built from the same codebase, so a web server restart never stops them, and a burst of Checking System messages never competes with serving pages.
+   115	
+   116	## 5. The rule contract
+   117	
+   118	What the web app sends the Checking System: one full-state message per change, on the `alert-rules` log, keyed by `alert_id`.
+   119	
+   120	```json
+   121	{"alert_id": "a-4417", "version": 12, "rule_revision": 7,
+   122	 "person_id": "person-ava", "symbol": "AAPL", "state": "active",
+   123	 "rule": {"kind": "price", "direction": "below", "threshold": "291.40"}}
+   124	
+   125	{"alert_id": "a-9120", "version": 3, "rule_revision": 1,
+   126	 "person_id": "person-liam", "symbol": "BTC/USD", "state": "paused",
+   127	 "rule": {"kind": "percentage", "direction": "falls", "percent": "5", "baseline": "todays_open"}}
+   128	
+   129	{"alert_id": "a-4417", "version": 13, "rule_revision": 7,
+   130	 "person_id": "person-ava", "symbol": "AAPL", "state": "deleted", "rule": null}
+   131	```
+   132	
+   133	The first message is a Private Rule; nothing in it says so.
+   134	
+   135	| Field | Meaning |
+   136	|---|---|
+   137	| `alert_id` | The Alert. The log key. |
+   138	| `version` | Orders messages for one Alert. Apply the highest you have seen; ignore anything lower. It may skip numbers. |
+   139	| `rule_revision` | The Rule Revision in force. Every Match must carry the revision that matched. |
+   140	| `person_id` | Whom to notify. The Alert Title is never sent. |
+   141	| `symbol` | The Instrument. Never changes for an `alert_id`. |
+   142	| `state` | `active` — check it. `paused` — do not check it or notify. `deleted` — forget it. |
+   143	| `rule.kind = price` | `direction`: `above` (price > `threshold`) or `below` (price < `threshold`). |
+   144	| `rule.kind = percentage` | `direction`: `rises` ((price − open) / open ≥ `percent`%) or `falls` ((open − price) / open ≥ `percent`%), with open = Today's Open. |
+   145	| Numbers | Decimal strings — SHIB/USD is quoted to 8 decimal places. |
+   146	
+   147	**Semantics the Checking System implements:**
+   148	
+   149	1. A Rule matches when its condition becomes true, and re-arms once it is false.
+   150	2. A message that arms a Rule — a new Rule Revision, or a resume — counts its first check as "became true" if the condition already holds.
+   151	3. Today's Open is the Instrument's first price of its current day; the Checking System decides when each Instrument's day starts (the session open, or 00:00 UTC for markets that never close).
+   152	
+   153	**Delivery.** The Alert change and its message are written to the outbox in one transaction, so a message exists if and only if the change committed. The Relay publishes at least once; a repeat carries the same `version` and does nothing. The log is compacted, so reading it from the start gives the Checking System the full current rule set.
+   154	
+   155	**Handing over is not checking.** The log accepting a message proves only that it was handed over. What would let us say a new Rule Revision has been checked is in §7 and §12.
+   156	
+   157	## 6. Applying the Checking System's messages
+   158	
+   159	Event Ingest reads `checking-events` **in arrival order**, applies up to 500 messages (or 100 ms' worth) in one database transaction, and commits its offset only after that transaction commits. A crash in between replays the batch — delivery is at-least-once, and every step below is idempotent in effect, so a replay changes nothing.
+   160	
+   161	Order matters because a Checked-through reaches us only after the Matches it covers: applying messages in arrival order means our database never holds "AAPL checked through 09:31:02" while a Match from before 09:31:02 is still missing. One consumer is plenty at this volume. If the log is ever partitioned, the Checking System must key both message kinds by Symbol — it knows each Alert's Symbol even though a Match does not carry it.
+   162	
+   163	**A Match** — `event_id`, `alert_id`, `rule_revision`, `matched_at`, `price`:
+   164	
+   165	1. Lock the Alert's row (so a Rule edit and a Match for it are applied one after the other). If the Alert does not exist — deleted, or never ours — drop the Match.
+   166	2. If `rule_revision` is lower than the Alert's current one, drop it: it matched an old Rule. A higher one cannot happen (we assign revisions before publishing them), so it goes to `dead_letters` and raises an alarm.
+   167	3. Insert it with its `rule_revision`, `ON CONFLICT (event_id) DO NOTHING`.
+   168	4. In the same transaction, prune the Alert's Matches to the 20 most recent by `(matched_at DESC, event_id DESC)` — event time, not arrival time, with `event_id` breaking ties.
+   169	
+   170	**Duplicates.** Stored Matches are deduplicated by `event_id`. Because only 20 are kept, that deduplication is not permanent: a replay of an older Match that was already pruned can be inserted again — and is pruned again in the same transaction, because it is older than every Match kept. A replay of a pruned Match cannot change the visible history or the latest Match.
+   171	
+   172	**A Checked-through** — `event_id`, `symbol`, `checked_through`: set the Symbol's Checked-through to `GREATEST(current, incoming)`. A duplicate or a late one changes nothing. Within a batch, each Symbol is written once, with the batch's latest value.
+   173	
+   174	**Match After Pause** is worked out when reading, not when storing: a Match whose `matched_at` falls inside one of the current revision's pause intervals is labelled as reported after the pause. This way it does not matter whether the pause or the Match reached us first. The pause moment comes from our clock and `matched_at` from the Checking System's, so the boundary is only as sharp as the skew between them — milliseconds.
+   175	
+   176	**Anything malformed** goes to `dead_letters` with the raw message, and Ingest moves on; it never blocks the log.
+   177	
+   178	Reads filter Matches by the Alert's current `rule_revision` as well, so a Match that raced a Rule edit can never be shown against the new Rule.
+   179	
+   180	## 7. What people see
+   181	
+   182	### The Owner's Alerts
+   183	
+   184	One query loads all of the Owner's Alerts, each with its Instrument's Checked-through and its latest Match — no query per Alert. Hundreds of rows is a small payload, so there is no pagination; search (title, Symbol, Rule Description), filters (Active/Paused, Rule Kind, Symbol) and sorting (recently matched, Symbol, newest) run in the browser.
+   185	
+   186	The page refetches every 15 seconds while it is visible, and when it regains focus. Not SSE or websockets: an Owner's list changes slowly, ages tick in the browser anyway, and polling survives web server restarts with no sticky connections and no fan-out from Ingest to the web tier.
+   187	
+   188	Times travel as absolute UTC and are turned into "4 min ago", the Visitor's time zone and the Visitor's language in the browser — so a page that was cached or left open never claims "5 seconds ago" for minutes. Rule Descriptions are generated from the Rule, so they can be shown in any language; an Alert Title is the Owner's own text and is shown as written.
+   189	
+   190	### Status: current, stale, or not yet checked
+   191	
+   192	**The Instrument** (Checked-through, from `instrument_checks`):
+   193	
+   194	| Situation | Shown |
+   195	|---|---|
+   196	| Checked-through at most **60 seconds** old | **Current**: "Checked through 09:31:02" |
+   197	| Older than 60 seconds | **Stale**: "Checked through 09:31:02 (4 min ago). Checking is delayed; matches after this time may not be shown yet." |
+   198	| Every Instrument with an Active Alert is Stale | A banner: the Checking System is delayed. |
+   199	
+   200	Checked-through normally arrives every few seconds, so 60 seconds is generous without leaving people uninformed for long.
+   201	
+   202	**The Alert:**
+   203	
+   204	| Situation | Shown |
+   205	|---|---|
+   206	| The current Rule Revision is not known to be covered | **Not Yet Checked** — and no "no matches" claim of any kind. |
+   207	| Covered, a Match exists | "Last matched 09:30:58 at 316.46" |
+   208	| Covered, no Match | "No matches since this rule was saved, as of 09:31:02" — never a bare "No matches". |
+   209	| The latest Match is a Match After Pause | The same line, labelled "reported after you paused this alert". |
+   210	| Paused | "Paused" (with the reason, if the pause was automatic). The latest Match is still shown; no freshness claim. |
+   211	
+   212	Nothing ever says or implies that the Owner was notified: no message tells us what the Checking System sent.
+   213	
+   214	**What "covered" means.** A Rule Revision is covered once its Instrument's Checked-through is at or after the moment the log accepted the message that armed it (the new revision, or the latest resume). That is only true if the Checking System makes the ordering promise in §12. Until the Checking team confirms it, it is an assumption. If they cannot promise it, we fall back to claiming nothing per Rule: show the Instrument's freshness and any Matches received, and never say "no matches" for a new revision. A Match that carries the revision is always proof it was checked. We deliberately do not add a grace period ("covered once Checked-through is a minute past handover") — time passing proves nothing about what was checked.
+   215	
+   216	## 8. Shared Links
+   217	
+   218	**What can be shared.** One Shared Link per Alert, for any Alert without a Private Rule ([ADR-0002](./adr/0002-private-rules-are-never-shared.md)). Editing a shared Alert into a Private Rule is allowed, but the form warns that saving will stop sharing, and saving does. Deleting an Alert stops sharing it.
+   219	
+   220	**The token.** 128 random bits, in `/s/<token>`. Stopping sharing deletes it; sharing again mints a new one, so an old link never comes back.
+   221	
+   222	**The public projection.** Everything a Shared Link shows is read through one query-and-serializer that:
+   223	
+   224	- selects an explicit list of public columns — never the Alert Title, never anything derived from a Holding;
+   225	- refuses Private Rules in the query itself (a second guard behind the form, which never offers sharing for them);
+   226	- describes the Rule with the generated Rule Description, never with Owner-written text.
+   227	
+   228	It is built and tested in step 2. **The future `/s/$token` route and its JSON must read through this projection and nothing else.**
+   229	
+   230	**What a Visitor sees.** The Symbol and Instrument name, the Rule Description, Active/Paused, the latest Match (time, price, and the Match After Pause label if it applies), and the Instrument's Checked-through as an absolute time, with Not Yet Checked shown the same way as for the Owner. No Owner name or email.
+   231	
+   232	**The same for everyone.** Shared Link pages render outside the personalised root layout (today the root loader reads the session on every page): they read no cookie and show no signed-in header, so the Owner opening their own link sees exactly what any Visitor sees. Language comes from the path (`/fr/s/<token>`), not from headers or cookies, so the cache key stays the URL.
+   233	
+   234	**Caching.** Pages and their JSON are served with `Cache-Control: public, max-age=0, s-maxage=10` and `Surrogate-Key: share-<token>` — browsers keep nothing, the CDN keeps a copy for at most 10 seconds. There is no `stale-while-revalidate` or `stale-if-error` on these routes: both would serve a revoked link. The CDN collapses concurrent misses, so however many Visitors arrive, each edge location sends our servers roughly one request per link per 10 seconds, and each costs one indexed query. The page polls `/s/<token>.json` every 15 seconds under the same headers.
+   235	
+   236	**Stopping sharing.**
+   237	
+   238	```mermaid
+   239	sequenceDiagram
+   240	  participant O as Owner
+   241	  participant W as Web server
+   242	  participant P as Postgres
+   243	  participant C as CDN
+   244	  O->>W: stop sharing
+   245	  W->>P: delete the Shared Link (commit)
+   246	  Note over W,P: from here, the origin answers 410 Gone
+   247	  W->>C: hard purge surrogate key share-TOKEN
+   248	  W->>C: hard purge again after 2 s
+   249	  W-->>O: "Sharing stopped. …"
+   250	```
+   251	
+   252	The second purge, 2 seconds later (the origin timeout for these routes), catches a response that read the database just before the delete and was cached just after the first purge. A purge that fails is retried by a job.
+   253	
+   254	**The guarantee, stated precisely.** Our servers stop serving the Alert the moment the delete commits: from then on the origin answers 410 Gone. A CDN edge may still serve a copy it cached earlier, for at most the 10 seconds it was allowed to keep it. The two purges make that unlikely but do not prove instant revocation at every edge, so the Owner is not promised it: "Sharing stopped. The link no longer works; copies cached along the way can take up to 10 seconds to clear." The 410 is itself cached for a minute, so a dead link that is still popular does not reach our servers.
+   255	
+   256	## 9. Scenarios
+   257	
+   258	### The web server restarts
+   259	
+   260	Nothing of record lives in a web server process. A save in flight either committed — the Alert change and its outbox row together — or did not; the browser shows an error, and retrying is safe: a create carries an Alert id generated in the browser, so a repeat returns the existing Alert, and an edit carries the `version` it was based on, so a repeat cannot apply twice. Pages that poll simply poll again; there are no sticky sessions or open connections to restore. The Relay, Ingest and Holdings worker are separate processes and keep running. When *they* restart, the Relay re-sends messages it had not confirmed (the Checking System ignores a `version` it has seen), and Ingest replays from its last committed offset (§6 makes that harmless).
+   261	
+   262	### The Checking System delivers a large batch after a quiet spell
+   263	
+   264	While it is quiet, each Instrument goes Stale 60 seconds after its last Checked-through, and every page says checking is delayed. Owners can still create, edit and pause Alerts — the outbox and `alert-rules` hold the messages; new Rule Revisions show Not Yet Checked.
+   265	
+   266	When the backlog lands, nothing has been lost: `checking-events` is not compacted and its retention outlasts the longest outage we plan for. Ingest drains it in order, in batches — one Checked-through write per Symbol per batch, Matches inserted and pruned per Alert, Matches for old revisions dropped. Because order is preserved, Checked-through never runs ahead of the Matches it covers. Status stays Stale until Checked-through is back within 60 seconds of now, so no page looks current while it is still catching up. A burst concentrates on a few popular Instruments (a sharp move in the S&P 500 can match thousands of Alerts at once); that is a large batch for Ingest, not a load on the web tier. Ingest lag is monitored and alarmed.
+   267	
+   268	### The same message arrives twice
+   269	
+   270	A repeated Match hits `event_id` and does nothing; if the original was already pruned, the repeat is inserted and pruned in the same transaction and cannot change what is shown (§6). A repeated or late Checked-through cannot move `GREATEST()` backwards. On the Checking System's side, a repeated rule message carries a `version` it has already applied.
+   271	
+   272	### One Shared Link takes most of the traffic
+   273	
+   274	The CDN serves it: each edge location asks our servers for it about once every 10 seconds, whatever the number of Visitors, and our cost per request is one indexed query. The page is identical for every Visitor, so nothing varies the cache key. Stopping sharing works as in §8, even for the hottest link.
+   275	
+   276	### The Checking System is down or delayed
+   277	
+   278	Every page keeps working and none of it becomes misleading: Instruments show as Stale with their last Checked-through; new Rule Revisions show Not Yet Checked; nothing says "no matches" that has not been covered; writes keep being accepted and queued.
+   279	
+   280	### Late, out-of-order, and stale Matches
+   281	
+   282	A Match for an older Rule Revision, arriving after an edit, is dropped. A Match for a deleted Alert is dropped. Matches arriving out of order are ordered by `matched_at`, so "Last matched" is the latest event, not the latest arrival.
+   283	
+   284	## 10. What we build first, and why
+   285	
+   286	**Writing a rule — the part step 2 names.** We would have picked it too:
+   287	
+   288	- The alerts do not exist yet. Ingest, status and sharing all need Alerts to act on.
+   289	- It produces the contract the Checking team is waiting for: the rule message, `rule_revision`, `version` and the semantics in §5. Across two teams, that contract is the long pole.
+   290	- It holds the privacy decision that shapes everything downstream: Private Rules are resolved into plain numbers before anything leaves our system.
+   291	
+   292	**Next: Ingest**, because that is where the correctness risk lives — duplicates, ordering, old revisions, bursts. It can be built and tested against recorded or synthetic messages before the Checking System exists. Then the Owner's status view, then Shared Links.
+   293	
+   294	## 11. Step 2: what is built
+   295	
+   296	- An Owner can create, edit, pause, resume and delete Alerts: Price (a typed price, or Price Paid for an Instrument they hold) and Percentage, with an optional Alert Title. Pages: `/alerts` (search, filter, sort), the new/edit form, and "Create alert" on each Instrument page.
+   297	- Alerts are kept in SQLite (`node:sqlite`), in a file under `./data/`, created on first start — a person who comes back finds the same Alerts.
+   298	- Every change that the Checking System would need writes the full-state rule message of §5 to the outbox, in the same transaction. Nothing publishes it yet.
+   299	- `rule_revision` and `version` behave as in §3: Rule changes clear Matches; unchanged saves are no-ops; stale edits are rejected with the latest version shown; creating twice with the same id makes one Alert.
+   300	- The public projection of §8 is built and tested; no Shared Link route uses it yet.
+   301	- Status is honest about what is missing: with no Relay, nothing has been handed to a Checking System, so every Alert shows **Not yet checked** and no Matches.
+   302	- **Not built:** Relay, Ingest, Checked-through, Shared Link routes and revocation, the Holdings worker, polling, the CDN. Sign-in stays the scaffold's demo persona cookie — unsigned, a stand-in for the site's real session.
+   303	
+   304	Tests sit at two seams. Vitest drives the alerts domain module with an in-memory database and holdings injected: validation, revisions, stale edits, idempotent create, Private Rule resolution, the outbox, the public projection, and Owner scoping on the server. Playwright drives the browser path: create, reload, edit, pause and resume, and the other persona getting "not found" for an Alert that is not theirs. How to run it is in the [README](../README.md).
+   305	
+   306	## 12. Assumptions to confirm with the Checking team
+   307	
+   308	1. **Coverage (the ordering promise).** Before sending a Checked-through of T for a Symbol, the Checking System has applied every rule message for that Symbol that the log accepted at or before T. Without it, we fall back as described in §7.
+   309	2. **Rule semantics.** Matching when the condition becomes true; re-arming when it is false; the first check after arming counts (§5).
+   310	3. **Today's Open.** Defined per Instrument by the Checking System: the session open, or 00:00 UTC for markets that never close.
+   311	4. **Rule messages.** Full state per `alert_id`; apply the highest `version`, which may skip numbers; `state: "deleted"` means forget.
+   312	5. **Matches carry the `rule_revision` that matched**, including Matches still in flight after a newer revision arrives.
+   313	6. **Paused Alerts** are neither checked nor notified; a Match that happened before the pause reached them can still arrive afterwards.
+   314	7. **Partitioning.** If `checking-events` is ever partitioned, both message kinds for one Symbol go to the same partition, in order.
+   315	8. **Retention.** `checking-events` keeps events at least as long as the longest outage we plan for — for example, 7 days.
+   316	9. **No volume data** is assumed; Rules use prices only.
+   317	10. **`price` in a Match** is the matched price, in the Instrument's quote currency.
+=== docs/adr/0001-resolve-private-thresholds-before-the-checking-system.md
+# Private thresholds are resolved before they reach the Checking System
+
+A Private Rule ("tell me when AAPL drops below what I paid") is resolved by the web server into a plain numeric threshold when it is saved, and the Checking System receives only that number — never a reference to the Holding, and nothing that marks the threshold as private. This keeps the rule contract uniform (every Rule the Checking System sees has the same public shape) and keeps reading Holdings inside this system. The cost is that we, not the Checking System, must notice when a Holding changes and send it a new threshold.
+
+## Considered Options
+
+- **Send a reference and let the Checking System read Holdings** — rejected: it widens the set of systems that read private data, and gives the Checking System a second kind of rule to implement.
+=== docs/adr/0002-private-rules-are-never-shared.md
+# Alerts with a Private Rule can never have a Shared Link
+
+Anything a Shared Link shows about a Private Rule leaks the Holding: the price in a Match is roughly the Price Paid, the time of a Match together with the public price history gives it away just as well, and even "a private condition on AAPL" tells a Visitor that the Owner holds AAPL — ownership is itself private. So an Alert with a Private Rule cannot be shared at all, rather than being shared in a redacted form. The Checking System does receive the resolved threshold (ADR-0001), but it is an internal system; a Shared Link is a different audience.
+
+The public view is built from data that cannot include Holdings, and it renders the same for every Visitor, the Owner included — there is no "the Owner is looking" branch.
+
+## Considered Options
+
+- **Share redacted** (Instrument and "a private condition", no times or prices) — rejected: still reveals ownership.
+- **Share the Match time only** — rejected: the time plus public prices reveals the Price Paid.
+=== docs/adr/0003-durable-logs-between-web-app-and-checking-system.md
+# Durable logs between the web app and the Checking System
+
+Rule changes leave through a transactional outbox: the Alert change and its full-state rule message commit in one Postgres transaction, and a separate Rule Relay publishes the message to a log keyed by alert id. That outbound log may be compacted — only the latest message per Alert matters, and compaction lets the Checking System rebuild the complete rule set by reading it from the start.
+
+The Checking System's messages arrive on a separate durable log consumed by a separate Event Ingest worker, which commits its read position only after its database transaction commits. The inbound log is **not** compacted: every event must stay until Ingest has applied it, so its retention must outlast the longest outage we plan to survive (Ingest down, or the Checking System delivering a long backlog at once).
+
+Delivery in both directions is at-least-once, with idempotent effects; we do not claim exactly-once. On our side, stored Matches are deduplicated by `event_id` and Checked-through only moves forward. Because only the 20 most recent Matches per Alert are stored, `event_id` deduplication is not permanent: a replay of an older, already-pruned Match can be inserted and immediately pruned again — it cannot change the visible history or the latest Match.
+
+The log accepting a rule message only proves it was handed over, not that the Checking System has checked the new Rule Revision.
+
+## Considered Options
+
+- **HTTP webhooks from the Checking System into the web servers** — rejected: a burst after a quiet spell would land on the same machines that serve pages, and retries would need their own design.
+- **The Checking System pulling rules from our HTTP API** — rejected: it ties the Checking System's ability to rebuild its rule set to our web tier being up.

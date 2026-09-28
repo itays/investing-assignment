@@ -1,0 +1,9 @@
+{
+  "agentType": "general-purpose",
+  "description": "Write alerts e2e tests and README",
+  "toolUseId": "toolu_01L9QUiLFQ4ghW82KDFfmpoC",
+  "spawnDepth": 1,
+  "requestShape": "background",
+  "requestNonInteractive": true,
+  "model": "opus"
+}
