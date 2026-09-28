@@ -19,9 +19,21 @@ type InstrumentDetailProps = {
 export function InstrumentDetail({ instrument }: InstrumentDetailProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <Link to="/" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-        Back to instruments
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/"
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
+        >
+          Back to instruments
+        </Link>
+        <Link
+          to="/alerts/new"
+          search={{ symbol: instrument.symbol }}
+          className={buttonVariants({ size: "sm" })}
+        >
+          Create alert
+        </Link>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>

@@ -11,6 +11,9 @@ dist-ssr
 __unconfig*
 todos.json
 
+# local SQLite databases (alerts)
+/data/
+
 # playwright
 /test-results/
 /playwright-report/

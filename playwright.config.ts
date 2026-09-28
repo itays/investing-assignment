@@ -1,7 +1,12 @@
 import { env } from "node:process"
 import { defineConfig, devices } from "@playwright/test"
 
-const baseURL = "http://127.0.0.1:3000"
+// Browser tests get their own port and database, so they never reuse the
+// developer's dev server on port 3000 or touch data/alerts.db. They run against
+// a production build: the dev server's on-demand module loading made WebKit
+// and Firefox flaky on a cold start.
+const port = 3100
+const baseURL = `http://127.0.0.1:${port}`
 const isCI = Boolean(env.CI)
 
 export default defineConfig({
@@ -37,8 +42,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "bun run dev -- --host 127.0.0.1 --strictPort",
+    command: `bunx vite build && bunx vite preview --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
+    env: { DATABASE_PATH: "data/e2e-alerts.db" },
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },

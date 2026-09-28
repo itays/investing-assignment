@@ -29,9 +29,21 @@ export function SiteHeader({ person }: SiteHeaderProps) {
   return (
     <header className="border-b">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-        <Link to="/" className="font-heading text-sm font-semibold">
-          Market Desk
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link to="/" className="font-heading text-sm font-semibold">
+            Market Desk
+          </Link>
+          {person ? (
+            <nav aria-label="Main">
+              <Link
+                to="/alerts"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+              >
+                Alerts
+              </Link>
+            </nav>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {person ? (
