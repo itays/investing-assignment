@@ -25,7 +25,7 @@ Capitalised terms (Alert, Rule Revision, Checked-through, …) are defined in [`
 
 **Ours:** the pages an Owner uses to create and manage Alerts, the public page behind a Shared Link, the web servers and workers behind them, and their storage.
 
-**Not ours:** the price feed, evaluating Rules, and sending notifications — the Checking System does all three. We never see a price except the one inside a Match. The instrument catalogue, sign-in and the Holdings service already exist on the site.
+**Not ours:** the price feed, evaluating Rules, and sending notifications — the Checking System does all three. We never see a price except the one inside a Match. The instrument catalogue, sign-in and the Holdings service already exist on the site; we assume the Holdings service publishes an event whenever a Holding changes.
 
 | Requirement (TASK.md) | Where |
 |---|---|
@@ -80,9 +80,11 @@ Pausing and resuming never make a Rule Revision, so the Match history is kept.
 
 - a new Price Paid gives each Private Rule on that Holding a new threshold and a new Rule Revision — even while the Alert is Paused, so resuming uses the right number;
 - if the Holding is gone, the Alert is Paused automatically, with the reason shown ("You no longer hold AAPL");
-- an Alert is never resumed automatically. Resuming a Private Rule checks that the Holding still exists and resolves Price Paid again.
+- an Alert is never resumed automatically. Resuming a Private Rule checks that the Holding still exists and resolves Price Paid again;
+- a save or resume that resolves Price Paid reads the Holding again after it commits, and if Price Paid changed in between, applies it as a holding change. Without that, a Holding that changed between the read and the commit would leave the Alert on the old number: the Holdings worker may already have run and found nothing to update;
+- the Holdings worker reads the current Price Paid from the Holdings service rather than trusting the event, so a repeated, late or out-of-order holding event resolves to an unchanged number and makes no new Rule Revision.
 
-**Who can see what.** Every server function takes the Owner from the session, never from its input, and every read or write of an Alert is scoped by its id *and* its Owner; someone else's Alert answers the same "not found" as a missing one. Alert ids are random, not sequential. The Owner sees their own Price Paid in the rule form — it is theirs.
+**Who can see what.** Every server function takes the Owner from the session, never from its input, and every read or write of an Alert is scoped by its id *and* its Owner; someone else's Alert answers the same "not found" as a missing one. Alert ids are random, not sequential, and generated in the browser so a create can be retried (§9). Deleting an Alert keeps its row, marked deleted, so an id is never used twice: a create with a deleted Alert's id, or someone else's, is refused without saying which. The Owner sees their own Price Paid in the rule form — it is theirs.
 
 ## 4. Parts, and what passes between them
 
@@ -105,13 +107,26 @@ flowchart LR
 | Part | Does | Keeps |
 |---|---|---|
 | **Web servers** | Serve Owner pages, server functions and Shared Link pages. Several, stateless, behind a load balancer. | Nothing of record. |
-| **Postgres** | System of record. | `alerts` (current Rule, `rule_revision`, `version`, state, title, when the current revision was published), `alert_pauses` (pause/resume moments for the current revision), `matches` (≤ 20 per Alert), `instrument_checks` (Checked-through per Symbol), `shared_links`, `rule_outbox`, `dead_letters`. |
-| **Rule Relay** | Reads the outbox in order and publishes each message to `alert-rules`, keyed by `alert_id`. Records when the log accepted it — the moment a Rule Revision was handed over. One active instance (leader lock). | Its position in the outbox. |
+| **Postgres** | System of record. | `alerts` (current Rule, `rule_revision`, `version`, state, title, when the log accepted the message that last armed it — the current revision or the latest resume; deleted Alerts stay as marked rows), `alert_pauses` (pause/resume moments for the current revision), `matches` (≤ 20 per Alert), `instrument_checks` (Checked-through per Symbol), `shared_links` (revoked tokens kept), `rule_outbox`, `dead_letters`. |
+| **Rule Relay** | Publishes unpublished outbox rows, oldest first, to `alert-rules`, keyed by `alert_id`, and marks each one published with the log's own timestamp for it — the moment it was handed over. When that message armed the Rule, the Alert records the timestamp too. One active instance (leader lock). | Nothing of its own: the published mark lives on each outbox row. |
 | **Event Ingest** | Applies `checking-events` to Postgres (§6). One consumer. | Its offset, committed after each database transaction. |
 | **Holdings worker** | Turns holding changes into new Rule Revisions or automatic pauses. | Its offset. |
 | **CDN** | Caches Shared Link pages and their JSON for a few seconds; purged on revocation. | Short-lived copies. |
 
 Relay, Ingest and the Holdings worker are separate processes built from the same codebase, so a web server restart never stops them, and a burst of Checking System messages never competes with serving pages.
+
+The Relay picks unpublished rows rather than keeping a position in the outbox: two saves can commit in the opposite order to their outbox ids, and a position would step past the row that committed late and never send it. Messages for one Alert still leave in `version` order, because the Alert's row lock makes its saves commit one after the other.
+
+**What we watch**, and what it would take to change the design:
+
+| Signal | Alarm when | If it keeps happening |
+|---|---|---|
+| Age of the oldest unpublished outbox row | over 30 seconds | The Relay or `alert-rules` is down; new Rule Revisions stay Not Yet Checked meanwhile. |
+| Ingest lag (age of the message being applied) | over 60 seconds, the Stale threshold | Partition `checking-events` by Symbol and run one Ingest per partition (§12.7). |
+| Rows in `dead_letters` | any | A contract mismatch with the Checking team, or a bug in Ingest. |
+| Share of Instruments with Active Alerts that are Stale | most of them | The Checking System is down; this is what the banner in §7 reflects. |
+| Failed CDN purges awaiting retry | any older than a minute | Revocation is slower than §8 promises. |
+| Origin requests per Shared Link token | well above one per edge location per 10 seconds | Misses are not being collapsed; add an origin shield in front of the web servers. |
 
 ## 5. The rule contract
 
@@ -156,13 +171,13 @@ The first message is a Private Rule; nothing in it says so.
 
 ## 6. Applying the Checking System's messages
 
-Event Ingest reads `checking-events` **in arrival order**, applies up to 500 messages (or 100 ms' worth) in one database transaction, and commits its offset only after that transaction commits. A crash in between replays the batch — delivery is at-least-once, and every step below is idempotent in effect, so a replay changes nothing.
+Event Ingest reads `checking-events` **in arrival order**, applies up to 500 Matches (or 100 ms' worth) in one database transaction, and commits its offset only after that transaction commits. Checked-throughs do not count toward the 500: they are most of the traffic, and they coalesce in memory into one write per Symbol, so a backlog of them drains at the speed of reading the log rather than one database transaction per 500 messages. A crash in between replays the batch — delivery is at-least-once, and every step below is idempotent in effect, so a replay changes nothing.
 
 Order matters because a Checked-through reaches us only after the Matches it covers: applying messages in arrival order means our database never holds "AAPL checked through 09:31:02" while a Match from before 09:31:02 is still missing. One consumer is plenty at this volume. If the log is ever partitioned, the Checking System must key both message kinds by Symbol — it knows each Alert's Symbol even though a Match does not carry it.
 
 **A Match** — `event_id`, `alert_id`, `rule_revision`, `matched_at`, `price`:
 
-1. Lock the Alert's row (so a Rule edit and a Match for it are applied one after the other). If the Alert does not exist — deleted, or never ours — drop the Match.
+1. Lock the Alert's row (so a Rule edit and a Match for it are applied one after the other). A batch locks its Alerts in `alert_id` order, as the Holdings worker does, so the two cannot deadlock. If the Alert is deleted or does not exist, drop the Match.
 2. If `rule_revision` is lower than the Alert's current one, drop it: it matched an old Rule. A higher one cannot happen (we assign revisions before publishing them), so it goes to `dead_letters` and raises an alarm.
 3. Insert it with its `rule_revision`, `ON CONFLICT (event_id) DO NOTHING`.
 4. In the same transaction, prune the Alert's Matches to the 20 most recent by `(matched_at DESC, event_id DESC)` — event time, not arrival time, with `event_id` breaking ties.
@@ -173,7 +188,7 @@ Order matters because a Checked-through reaches us only after the Matches it cov
 
 **Match After Pause** is worked out when reading, not when storing: a Match whose `matched_at` falls inside one of the current revision's pause intervals is labelled as reported after the pause. This way it does not matter whether the pause or the Match reached us first. The pause moment comes from our clock and `matched_at` from the Checking System's, so the boundary is only as sharp as the skew between them — milliseconds.
 
-**Anything malformed** goes to `dead_letters` with the raw message, and Ingest moves on; it never blocks the log.
+**Anything malformed** goes to `dead_letters` with the raw message, and Ingest moves on; it never blocks the log. If a batch's transaction is rejected (rather than the database being unreachable, where Ingest just waits and retries), Ingest applies the same messages again one at a time; a message that still fails on its own goes to `dead_letters`, so one bad message cannot hold back the rest.
 
 Reads filter Matches by the Alert's current `rule_revision` as well, so a Match that raced a Rule edit can never be shown against the new Rule.
 
@@ -181,11 +196,11 @@ Reads filter Matches by the Alert's current `rule_revision` as well, so a Match 
 
 ### The Owner's Alerts
 
-One query loads all of the Owner's Alerts, each with its Instrument's Checked-through and its latest Match — no query per Alert. Hundreds of rows is a small payload, so there is no pagination; search (title, Symbol, Rule Description), filters (Active/Paused, Rule Kind, Symbol) and sorting (recently matched, Symbol, newest) run in the browser.
+One query loads all of the Owner's Alerts, each with its Instrument's Checked-through and its latest Match — no query per Alert. Hundreds of rows is a small payload, so there is no pagination; a limit of 1,000 Alerts per Owner keeps it that way, and paging on the server is the change if that limit ever has to rise; search (title, Symbol, Rule Description), filters (Active/Paused, Rule Kind, Symbol) and sorting (recently matched, Symbol, newest) run in the browser.
 
 The page refetches every 15 seconds while it is visible, and when it regains focus. Not SSE or websockets: an Owner's list changes slowly, ages tick in the browser anyway, and polling survives web server restarts with no sticky connections and no fan-out from Ingest to the web tier.
 
-Times travel as absolute UTC and are turned into "4 min ago", the Visitor's time zone and the Visitor's language in the browser — so a page that was cached or left open never claims "5 seconds ago" for minutes. Rule Descriptions are generated from the Rule, so they can be shown in any language; an Alert Title is the Owner's own text and is shown as written.
+Times travel as absolute UTC and are turned into "4 min ago", the reader's time zone and the reader's language in the browser — so a page that was cached or left open never claims "5 seconds ago" for minutes. Rule Descriptions are generated from the Rule, so they can be shown in any language; an Alert Title is the Owner's own text and is shown as written.
 
 ### Status: current, stale, or not yet checked
 
@@ -196,8 +211,9 @@ Times travel as absolute UTC and are turned into "4 min ago", the Visitor's time
 | Checked-through at most **60 seconds** old | **Current**: "Checked through 09:31:02" |
 | Older than 60 seconds | **Stale**: "Checked through 09:31:02 (4 min ago). Checking is delayed; matches after this time may not be shown yet." |
 | Every Instrument with an Active Alert is Stale | A banner: the Checking System is delayed. |
+| No Checked-through has arrived yet (a Symbol's first Alert) | No time is shown; its Alerts are Not Yet Checked. |
 
-Checked-through normally arrives every few seconds, so 60 seconds is generous without leaving people uninformed for long.
+Checked-through normally arrives every few seconds, so 60 seconds is generous without leaving people uninformed for long. Current or Stale is decided in the browser, from the absolute Checked-through and the browser's clock, not in the page the server rendered — so a page that stops refreshing (cached, left open, or unable to reach us) turns Stale on its own instead of staying Current.
 
 **The Alert:**
 
@@ -211,13 +227,13 @@ Checked-through normally arrives every few seconds, so 60 seconds is generous wi
 
 Nothing ever says or implies that the Owner was notified: no message tells us what the Checking System sent.
 
-**What "covered" means.** A Rule Revision is covered once its Instrument's Checked-through is at or after the moment the log accepted the message that armed it (the new revision, or the latest resume). That is only true if the Checking System makes the ordering promise in §12. Until the Checking team confirms it, it is an assumption. If they cannot promise it, we fall back to claiming nothing per Rule: show the Instrument's freshness and any Matches received, and never say "no matches" for a new revision. A Match that carries the revision is always proof it was checked. We deliberately do not add a grace period ("covered once Checked-through is a minute past handover") — time passing proves nothing about what was checked.
+**What "covered" means.** A Rule Revision is covered once its Instrument's Checked-through is at or after the moment the log accepted the message that armed it (the new revision, or the latest resume) — the log's own timestamp on that message, which the Relay records (§4) and the Checking System can read too, so both sides compare against the same clock. A message the Relay has not published yet is not covered. That is only true if the Checking System makes the ordering promise in §12. Until the Checking team confirms it, it is an assumption. If they cannot promise it, we fall back to claiming nothing per Rule: show the Instrument's freshness and any Matches received, and never say "no matches" for a new revision. A Match that carries the revision is always proof it was checked. We deliberately do not add a grace period ("covered once Checked-through is a minute past handover") — time passing proves nothing about what was checked.
 
 ## 8. Shared Links
 
-**What can be shared.** One Shared Link per Alert, for any Alert without a Private Rule ([ADR-0002](./adr/0002-private-rules-are-never-shared.md)). Editing a shared Alert into a Private Rule is allowed, but the form warns that saving will stop sharing, and saving does. Deleting an Alert stops sharing it.
+**What can be shared.** At most one working Shared Link per Alert, for any Alert without a Private Rule ([ADR-0002](./adr/0002-private-rules-are-never-shared.md)). Editing a shared Alert into a Private Rule is allowed, but the form warns that saving will stop sharing, and saving does. Deleting an Alert stops sharing it. Both stop sharing in the same transaction as the change, then purge the CDN exactly as stopping sharing does below.
 
-**The token.** 128 random bits, in `/s/<token>`. Stopping sharing deletes it; sharing again mints a new one, so an old link never comes back.
+**The token.** 128 random bits, in `/s/<token>`. Stopping sharing marks it revoked; the row is kept, so the origin can tell a dead link (410 Gone) from one that never existed (404), and so a token is never issued twice. Sharing again mints a new one, so an old link never comes back.
 
 **The public projection.** Everything a Shared Link shows is read through one query-and-serializer that:
 
@@ -229,7 +245,7 @@ It is built and tested in step 2. **The future `/s/$token` route and its JSON mu
 
 **What a Visitor sees.** The Symbol and Instrument name, the Rule Description, Active/Paused, the latest Match (time, price, and the Match After Pause label if it applies), and the Instrument's Checked-through as an absolute time, with Not Yet Checked shown the same way as for the Owner. No Owner name or email.
 
-**The same for everyone.** Shared Link pages render outside the personalised root layout (today the root loader reads the session on every page): they read no cookie and show no signed-in header, so the Owner opening their own link sees exactly what any Visitor sees. Language comes from the path (`/fr/s/<token>`), not from headers or cookies, so the cache key stays the URL.
+**The same for everyone.** Shared Link pages render outside the personalised root layout (today the root loader reads the session on every page): they read no cookie, never set one, and show no signed-in header, so the Owner opening their own link sees exactly what any Visitor sees. The CDN strips cookies from these requests, so a cached copy can never carry anyone's session. Language comes from the path (`/fr/s/<token>`), not from headers or cookies, so the cache key stays the URL.
 
 **Caching.** Pages and their JSON are served with `Cache-Control: public, max-age=0, s-maxage=10` and `Surrogate-Key: share-<token>` — browsers keep nothing, the CDN keeps a copy for at most 10 seconds. There is no `stale-while-revalidate` or `stale-if-error` on these routes: both would serve a revoked link. The CDN collapses concurrent misses, so however many Visitors arrive, each edge location sends our servers roughly one request per link per 10 seconds, and each costs one indexed query. The page polls `/s/<token>.json` every 15 seconds under the same headers.
 
@@ -242,32 +258,32 @@ sequenceDiagram
   participant P as Postgres
   participant C as CDN
   O->>W: stop sharing
-  W->>P: delete the Shared Link (commit)
+  W->>P: revoke the Shared Link (commit)
   Note over W,P: from here, the origin answers 410 Gone
   W->>C: hard purge surrogate key share-TOKEN
   W->>C: hard purge again after 2 s
   W-->>O: "Sharing stopped. …"
 ```
 
-The second purge, 2 seconds later (the origin timeout for these routes), catches a response that read the database just before the delete and was cached just after the first purge. A purge that fails is retried by a job.
+The second purge, 2 seconds later (the origin timeout for these routes), catches a response that read the database just before the revocation and was cached just after the first purge. A purge that fails is retried by a job.
 
-**The guarantee, stated precisely.** Our servers stop serving the Alert the moment the delete commits: from then on the origin answers 410 Gone. A CDN edge may still serve a copy it cached earlier, for at most the 10 seconds it was allowed to keep it. The two purges make that unlikely but do not prove instant revocation at every edge, so the Owner is not promised it: "Sharing stopped. The link no longer works; copies cached along the way can take up to 10 seconds to clear." The 410 is itself cached for a minute, so a dead link that is still popular does not reach our servers.
+**The guarantee, stated precisely.** Our servers stop serving the Alert the moment the revocation commits: from then on the origin answers 410 Gone. A CDN edge may still serve a copy it cached earlier, for at most the 10 seconds it was allowed to keep it. The two purges make that unlikely but do not prove instant revocation at every edge, so the Owner is not promised it: "Sharing stopped. The link no longer works; copies cached along the way can take up to 10 seconds to clear." The 410 is itself cached for a minute, so a dead link that is still popular does not reach our servers; a 404 for an unknown token is cached the same way.
 
 ## 9. Scenarios
 
 ### The web server restarts
 
-Nothing of record lives in a web server process. A save in flight either committed — the Alert change and its outbox row together — or did not; the browser shows an error, and retrying is safe: a create carries an Alert id generated in the browser, so a repeat returns the existing Alert, and an edit carries the `version` it was based on, so a repeat cannot apply twice. Pages that poll simply poll again; there are no sticky sessions or open connections to restore. The Relay, Ingest and Holdings worker are separate processes and keep running. When *they* restart, the Relay re-sends messages it had not confirmed (the Checking System ignores a `version` it has seen), and Ingest replays from its last committed offset (§6 makes that harmless).
+Nothing of record lives in a web server process. A save in flight either committed — the Alert change and its outbox row together — or did not; the browser shows an error, and retrying is safe: a create carries an Alert id generated in the browser, so a repeat returns the existing Alert, and an edit carries the `version` it was based on, so a repeat cannot apply twice. Pages that poll simply poll again; there are no sticky sessions or open connections to restore. The Relay, Ingest and Holdings worker are separate processes and keep running. When *they* restart, the Relay re-sends messages it had not marked published (the Checking System ignores a `version` it has seen), and Ingest replays from its last committed offset (§6 makes that harmless).
 
 ### The Checking System delivers a large batch after a quiet spell
 
 While it is quiet, each Instrument goes Stale 60 seconds after its last Checked-through, and every page says checking is delayed. Owners can still create, edit and pause Alerts — the outbox and `alert-rules` hold the messages; new Rule Revisions show Not Yet Checked.
 
-When the backlog lands, nothing has been lost: `checking-events` is not compacted and its retention outlasts the longest outage we plan for. Ingest drains it in order, in batches — one Checked-through write per Symbol per batch, Matches inserted and pruned per Alert, Matches for old revisions dropped. Because order is preserved, Checked-through never runs ahead of the Matches it covers. Status stays Stale until Checked-through is back within 60 seconds of now, so no page looks current while it is still catching up. A burst concentrates on a few popular Instruments (a sharp move in the S&P 500 can match thousands of Alerts at once); that is a large batch for Ingest, not a load on the web tier. Ingest lag is monitored and alarmed.
+When the backlog lands, nothing has been lost: `checking-events` is not compacted and its retention outlasts the longest outage we plan for. Ingest drains it in order, in batches — one Checked-through write per Symbol per batch, Matches inserted and pruned per Alert, Matches for old revisions dropped. Because order is preserved, Checked-through never runs ahead of the Matches it covers. Status stays Stale until Checked-through is back within 60 seconds of now, so no page looks current while it is still catching up. The backlog is mostly Checked-throughs: with, say, 5,000 Instruments carrying Alerts and one Checked-through each every 3 seconds, a day's silence is about 150 million messages. Because they coalesce to one write per Symbol per batch and do not count toward its 500-Match limit (§6), Ingest drains them at the rate it can read the log — tens of thousands a second, well under an hour for that day — not at the rate of database transactions. A burst concentrates on a few popular Instruments (a sharp move in the S&P 500 can match thousands of Alerts at once); that is a large batch for Ingest, not a load on the web tier. Ingest lag is monitored and alarmed.
 
 ### The same message arrives twice
 
-A repeated Match hits `event_id` and does nothing; if the original was already pruned, the repeat is inserted and pruned in the same transaction and cannot change what is shown (§6). A repeated or late Checked-through cannot move `GREATEST()` backwards. On the Checking System's side, a repeated rule message carries a `version` it has already applied.
+A repeated Match hits `event_id` and does nothing; if the original was already pruned, the repeat is inserted and pruned in the same transaction and cannot change what is shown (§6). A repeated or late Checked-through cannot move `GREATEST()` backwards. On the Checking System's side, a repeated rule message carries a `version` it has already applied. A repeated holding event resolves to an unchanged Price Paid and makes no Rule Revision (§3).
 
 ### One Shared Link takes most of the traffic
 
@@ -276,6 +292,8 @@ The CDN serves it: each edge location asks our servers for it about once every 1
 ### The Checking System is down or delayed
 
 Every page keeps working and none of it becomes misleading: Instruments show as Stale with their last Checked-through; new Rule Revisions show Not Yet Checked; nothing says "no matches" that has not been covered; writes keep being accepted and queued.
+
+The same holds when our side of the link fails. If `alert-rules` is unreachable, saves still commit, the outbox holds their messages until the Relay can publish them, and those Rule Revisions stay Not Yet Checked. If the Holdings service is unreachable, saving or resuming a Private Rule fails with a message saying so; every other Rule saves normally, and holding changes wait on their log for the Holdings worker.
 
 ### Late, out-of-order, and stale Matches
 
@@ -299,13 +317,13 @@ A Match for an older Rule Revision, arriving after an edit, is dropped. A Match 
 - `rule_revision` and `version` behave as in §3: Rule changes clear Matches; unchanged saves are no-ops; stale edits are rejected with the latest version shown; creating twice with the same id makes one Alert.
 - The public projection of §8 is built and tested; no Shared Link route uses it yet.
 - Status is honest about what is missing: with no Relay, nothing has been handed to a Checking System, so every Alert shows **Not yet checked** and no Matches.
-- **Not built:** Relay, Ingest, Checked-through, Shared Link routes and revocation, the Holdings worker, polling, the CDN. Sign-in stays the scaffold's demo persona cookie — unsigned, a stand-in for the site's real session.
+- **Not built:** Relay, Ingest, Checked-through, Shared Link routes and revocation, the Holdings worker, re-reading Price Paid after a save, the per-Owner limit, polling, the CDN. Sign-in stays the scaffold's demo persona cookie — unsigned, a stand-in for the site's real session.
 
 Tests sit at two seams. Vitest drives the alerts domain module with an in-memory database and holdings injected: validation, revisions, stale edits, idempotent create, Private Rule resolution, the outbox, the public projection, and Owner scoping on the server. Playwright drives the browser path: create, reload, edit, pause and resume, and the other persona getting "not found" for an Alert that is not theirs. How to run it is in the [README](../README.md).
 
 ## 12. Assumptions to confirm with the Checking team
 
-1. **Coverage (the ordering promise).** Before sending a Checked-through of T for a Symbol, the Checking System has applied every rule message for that Symbol that the log accepted at or before T. Without it, we fall back as described in §7.
+1. **Coverage (the ordering promise).** Before sending a Checked-through of T for a Symbol, the Checking System has applied every rule message for that Symbol whose log timestamp is at or before T. Without it, we fall back as described in §7.
 2. **Rule semantics.** Matching when the condition becomes true; re-arming when it is false; the first check after arming counts (§5).
 3. **Today's Open.** Defined per Instrument by the Checking System: the session open, or 00:00 UTC for markets that never close.
 4. **Rule messages.** Full state per `alert_id`; apply the highest `version`, which may skip numbers; `state: "deleted"` means forget.
