@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as AlertsIndexRouteImport } from './routes/alerts/index'
+import { Route as AlertsAlertIdRouteImport } from './routes/alerts/$alertId'
+import { Route as AlertsNewRouteImport } from './routes/alerts/new'
 import { Route as InstrumentsSymbolRouteImport } from './routes/instruments/$symbol'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +26,21 @@ const SignInRoute = SignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlertsIndexRoute = AlertsIndexRouteImport.update({
+  id: '/alerts/',
+  path: '/alerts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertsAlertIdRoute = AlertsAlertIdRouteImport.update({
+  id: '/alerts/$alertId',
+  path: '/alerts/$alertId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertsNewRoute = AlertsNewRouteImport.update({
+  id: '/alerts/new',
+  path: '/alerts/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InstrumentsSymbolRoute = InstrumentsSymbolRouteImport.update({
   id: '/instruments/$symbol',
   path: '/instruments/$symbol',
@@ -32,31 +50,62 @@ const InstrumentsSymbolRoute = InstrumentsSymbolRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/alerts/$alertId': typeof AlertsAlertIdRoute
+  '/alerts/new': typeof AlertsNewRoute
   '/instruments/$symbol': typeof InstrumentsSymbolRoute
+  '/alerts/': typeof AlertsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/alerts/$alertId': typeof AlertsAlertIdRoute
+  '/alerts/new': typeof AlertsNewRoute
   '/instruments/$symbol': typeof InstrumentsSymbolRoute
+  '/alerts': typeof AlertsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
+  '/alerts/$alertId': typeof AlertsAlertIdRoute
+  '/alerts/new': typeof AlertsNewRoute
   '/instruments/$symbol': typeof InstrumentsSymbolRoute
+  '/alerts/': typeof AlertsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/instruments/$symbol'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/alerts/$alertId'
+    | '/alerts/new'
+    | '/instruments/$symbol'
+    | '/alerts/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/instruments/$symbol'
-  id: '__root__' | '/' | '/sign-in' | '/instruments/$symbol'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/alerts/$alertId'
+    | '/alerts/new'
+    | '/instruments/$symbol'
+    | '/alerts'
+  id:
+    | '__root__'
+    | '/'
+    | '/sign-in'
+    | '/alerts/$alertId'
+    | '/alerts/new'
+    | '/instruments/$symbol'
+    | '/alerts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SignInRoute: typeof SignInRoute
+  AlertsAlertIdRoute: typeof AlertsAlertIdRoute
+  AlertsNewRoute: typeof AlertsNewRoute
   InstrumentsSymbolRoute: typeof InstrumentsSymbolRoute
+  AlertsIndexRoute: typeof AlertsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +124,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/alerts/': {
+      id: '/alerts/'
+      path: '/alerts'
+      fullPath: '/alerts/'
+      preLoaderRoute: typeof AlertsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alerts/$alertId': {
+      id: '/alerts/$alertId'
+      path: '/alerts/$alertId'
+      fullPath: '/alerts/$alertId'
+      preLoaderRoute: typeof AlertsAlertIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alerts/new': {
+      id: '/alerts/new'
+      path: '/alerts/new'
+      fullPath: '/alerts/new'
+      preLoaderRoute: typeof AlertsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/instruments/$symbol': {
       id: '/instruments/$symbol'
       path: '/instruments/$symbol'
@@ -88,7 +158,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SignInRoute: SignInRoute,
+  AlertsAlertIdRoute: AlertsAlertIdRoute,
+  AlertsNewRoute: AlertsNewRoute,
   InstrumentsSymbolRoute: InstrumentsSymbolRoute,
+  AlertsIndexRoute: AlertsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
